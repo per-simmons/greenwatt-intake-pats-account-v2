@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel-Perfect Signature Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c5530;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-form {
+            display: grid;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+        input, select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .test-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .test-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .poa-btn {
+            background: #2c5530;
+            color: white;
+        }
+        .poa-btn:hover {
+            background: #1e3a20;
+        }
+        .agreement-btn {
+            background: #4a90e2;
+            color: white;
+        }
+        .agreement-btn:hover {
+            background: #357abd;
+        }
+        .full-test-btn {
+            grid-column: 1 / -1;
+            background: #e74c3c;
+            color: white;
+        }
+        .full-test-btn:hover {
+            background: #c0392b;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            display: none;
+        }
+        .results h3 {
+            color: #2c5530;
+            margin-top: 0;
+        }
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 3px;
+            border-left: 4px solid #2c5530;
+        }
+        .success {
+            border-left-color: #27ae60;
+        }
+        .error {
+            border-left-color: #e74c3c;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .feature-info {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .feature-info h4 {
+            color: #2c5530;
+            margin: 0 0 10px 0;
+        }
+        .feature-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .feature-info li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Pixel-Perfect Signature Test</h1>
+        <p class="subtitle">Test the anchor-based signature placement system</p>
+        
+        <div class="feature-info">
+            <h4>✨ What This Tests:</h4>
+            <ul>
+                <li>Anchor-text detection (finds "Signature:", "Name:", etc.)</li>
+                <li>Multi-page signature placement (POA on page 2, Agreements on pages 7-9)</li>
+                <li>Enhanced POA ID generation (POA-YYYYMMDDHHMMS-{uuid})</li>
+                <li>Pixel-perfect coordinate placement</li>
+                <li>Signature font styling (Helvetica-Oblique)</li>
+            </ul>
+        </div>
+        
+        <form class="test-form" id="testForm">
+            <div class="form-group">
+                <label for="contact_name">Your Name (for signature)</label>
+                <input type="text" id="contact_name" name="contact_name" value="John Doe" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="john@example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" value="Manager">
+            </div>
+            
+            <div class="form-group">
+                <label for="developer">Developer</label>
+                <select id="developer" name="developer">
+                    <option value="Meadow Energy">Meadow Energy</option>
+                    <option value="Solar Simplified">Solar Simplified</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="utility">Utility</label>
+                <select id="utility" name="utility">
+                    <option value="National Grid">National Grid</option>
+                    <option value="NYSEG">NYSEG</option>
+                    <option value="RG&E">RG&E</option>
+                    <option value="ConEd">ConEd</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="account_type">Account Type</label>
+                <select id="account_type" name="account_type">
+                    <option value="Small Demand <25 KW">Small Demand <25 KW</option>
+                    <option value="Large Demand >25 KW">Large Demand >25 KW</option>
+                    <option value="Mass Market [Residential]">Mass Market [Residential]</option>
+                </select>
+            </div>
+            
+            <div class="test-buttons">
+                <button type="button" class="test-btn poa-btn" onclick="testPOA()">
+                    📄 Test POA Signatures
+                </button>
+                <button type="button" class="test-btn agreement-btn" onclick="testAgreement()">
+                    📋 Test Agreement Signatures
+                </button>
+                <button type="button" class="test-btn full-test-btn" onclick="testFull()">
+                    🚀 Run Full Test (POA + Agreement + Drive Upload)
+                </button>
+            </div>
+        </form>
+        
+        <div class="results" id="results">
+            <h3>Test Results</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        function showResults(content) {
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('resultContent').innerHTML = content;
+        }
+        
+        function testPOA() {
+            const formData = new FormData(document.getElementById('testForm'));
+            showResults('<div class="loading">Testing POA signature placement...</div>');
+            
+            fetch('/test-pixel-perfect-poa', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let html = '';
+                if (data.success) {
+                    html += '<div class="result-item success">';
+                    html += '<strong>✅ POA Test Successful!</strong><br>';
+                    html += `POA ID: ${data.poa_id}<br>`;
+                    html += `File Size: ${data.file_size} bytes<br>`;
+                    html += `Signatures placed on: Page ${data.signature_page}<br>`;
+                    if (data.download_link) {
+                        html += `<a href="${data.download_link}" target="_blank">📥 Download Test PDF</a>`;
+                    }
+                    html += '</div>';
+                } else {
+                    html += '<div class="result-item error">';
+                    html += '<strong>❌ POA Test Failed</strong><br>';
+                    html += data.error || 'Unknown error';
+                    html += '</div>';
+                }
+                showResults(html);
+            })
+            .catch(error => {
+                showResults(`<div class="result-item error">❌ Error: ${error}</div>`);
+            });
+        }
+        
+        function testAgreement() {
+            const formData = new FormData(document.getElementById('testForm'));
+            showResults('<div class="loading">Testing Agreement signature placement...</div>');
+            
+            fetch('/test-pixel-perfect-agreement', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let html = '';
+                if (data.success) {
+                    html += '<div class="result-item success">';
+                    html += '<strong>✅ Agreement Test Successful!</strong><br>';
+                    html += `Template: ${data.template_used}<br>`;
+                    html += `File Size: ${data.file_size} bytes<br>`;
+                    html += `Signatures placed on: Page ${data.signature_page}<br>`;
+                    if (data.download_link) {
+                        html += `<a href="${data.download_link}" target="_blank">📥 Download Test PDF</a>`;
+                    }
+                    html += '</div>';
+                } else {
+                    html += '<div class="result-item error">';
+                    html += '<strong>❌ Agreement Test Failed</strong><br>';
+                    html += data.error || 'Unknown error';
+                    html += '</div>';
+                }
+                showResults(html);
+            })
+            .catch(error => {
+                showResults(`<div class="result-item error">❌ Error: ${error}</div>`);
+            });
+        }
+        
+        function testFull() {
+            const formData = new FormData(document.getElementById('testForm'));
+            showResults('<div class="loading">Running full end-to-end test...</div>');
+            
+            fetch('/test-pixel-perfect-full', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let html = '';
+                if (data.success) {
+                    html += '<div class="result-item success">';
+                    html += '<strong>✅ Full Test Successful!</strong><br>';
+                    html += `POA ID: ${data.poa_id}<br>`;
+                    html += `Google Drive Folder: <a href="${data.drive_folder}" target="_blank">📁 View Folder</a><br>`;
+                    html += `POA Document: <a href="${data.poa_link}" target="_blank">📄 View POA</a><br>`;
+                    html += `Agreement: <a href="${data.agreement_link}" target="_blank">📋 View Agreement</a><br>`;
+                    html += `Agent Lookup: ${data.agent_info}<br>`;
+                    html += '</div>';
+                } else {
+                    html += '<div class="result-item error">';
+                    html += '<strong>❌ Full Test Failed</strong><br>';
+                    html += data.error || 'Unknown error';
+                    html += '</div>';
+                }
+                showResults(html);
+            })
+            .catch(error => {
+                showResults(`<div class="result-item error">❌ Error: ${error}</div>`);
+            });
+        }
+    </script>
+</body>
+</html>

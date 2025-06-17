@@ -1,0 +1,48 @@
+# Environment and secrets
+.env
+.env.*
+*.env
+*service-account*.json
+*-api-key.json
+upwork-*.json
+
+# Logs
+*.log
+debug_*.py
+test_*.py
+server.log
+debug_*.log
+
+# Temporary files
+temp/
+uploads/
+debug_output/
+extracted_text_*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development files
+create_test_image.py
+run_server_fixed.py
+package.json
+EOF < /dev/null

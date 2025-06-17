@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 Test - GreenWatt Intake</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-button {
+            background: #2c5530;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        .test-button:hover {
+            background: #1e3a21;
+        }
+        .pre-filled-data {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .expected-flow {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .phase-status {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .logs {
+            background: #2d2d2d;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Phase 1 Test - GreenWatt Intake System</h1>
+        
+        <div class="phase-status">
+            <h3>📊 Current Phase Status</h3>
+            <p><strong>Phase 1 Complete:</strong> Foundation & Infrastructure Setup</p>
+            <ul>
+                <li>✅ Google Sheets dynamic lookup</li>
+                <li>✅ Google Drive integration</li> 
+                <li>✅ Agent ID → Name resolution</li>
+                <li>✅ Developer + Utility mapping</li>
+                <li>✅ Basic PDF generation</li>
+                <li>✅ Email notifications</li>
+                <li>⚠️ SMS service (configured but needs phone numbers)</li>
+            </ul>
+        </div>
+
+        <div class="pre-filled-data">
+            <h3>📝 Pre-filled Test Data</h3>
+            <ul>
+                <li><strong>Business Entity:</strong> ABC Solar Company LLC</li>
+                <li><strong>Account Name:</strong> ABC Solar Company</li>
+                <li><strong>Contact:</strong> John Smith, Operations Manager</li>
+                <li><strong>Phone:</strong> (555) 123-4567</li>
+                <li><strong>Email:</strong> john.smith@abcsolar.com</li>
+                <li><strong>Service Address:</strong> 123 Main St, Rochester, NY 14623</li>
+                <li><strong>Developer:</strong> Meadow Energy</li>
+                <li><strong>Account Type:</strong> Small Demand &lt;25 KW</li>
+                <li><strong>Utility:</strong> National Grid</li>
+                <li><strong>Agent ID:</strong> AG001 (should resolve to real agent name)</li>
+                <li><strong>Mock Utility Bill:</strong> Will use test PDF with mock OCR data</li>
+            </ul>
+        </div>
+
+        <div class="expected-flow">
+            <h3>🔄 Expected Flow When You Click Test</h3>
+            <ol>
+                <li><strong>Agent Lookup:</strong> AG001 → Query Google Sheets for agent name</li>
+                <li><strong>Developer Mapping:</strong> Meadow Energy + National Grid → Find agreement template</li>
+                <li><strong>Mock OCR Processing:</strong> Simulate utility bill OCR (no real file needed)</li>
+                <li><strong>PDF Generation:</strong> Create POA and Developer Agreement PDFs</li>
+                <li><strong>Google Drive Upload:</strong> Create folder and upload documents</li>
+                <li><strong>Google Sheets Logging:</strong> Log submission with all data</li>
+                <li><strong>Email Notification:</strong> Send summary email</li>
+                <li><strong>SMS Test:</strong> Log SMS attempt (may not send if phones not configured)</li>
+            </ol>
+        </div>
+
+        <button id="runPhase1Test" class="test-button">
+            🚀 Run Phase 1 End-to-End Test
+        </button>
+
+        <div id="testResults" style="display: none;">
+            <h3>📋 Test Results</h3>
+            <div id="resultContent"></div>
+        </div>
+
+        <div id="logs" class="logs">
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('runPhase1Test').addEventListener('click', function() {
+            const button = this;
+            const results = document.getElementById('testResults');
+            const logs = document.getElementById('logs');
+            const logContent = document.getElementById('logContent');
+            const resultContent = document.getElementById('resultContent');
+            
+            // Show logs and results
+            results.style.display = 'block';
+            logs.style.display = 'block';
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.textContent = '⏳ Running Test...';
+            
+            // Clear previous logs
+            logContent.innerHTML = '';
+            resultContent.innerHTML = '<p>⏳ Test in progress...</p>';
+            
+            // Add log function
+            function addLog(message) {
+                logContent.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+                logs.scrollTop = logs.scrollHeight;
+            }
+            
+            addLog('🚀 Starting Phase 1 End-to-End Test');
+            addLog('📤 Sending test submission...');
+            
+            // Create test form data
+            const formData = new FormData();
+            formData.append('business_entity', 'ABC Solar Company LLC');
+            formData.append('account_name', 'ABC Solar Company');
+            formData.append('contact_name', 'John Smith');
+            formData.append('title', 'Operations Manager');
+            formData.append('phone', '(555) 123-4567');
+            formData.append('email', 'john.smith@abcsolar.com');
+            formData.append('service_addresses', '123 Main St, Rochester, NY 14623');
+            formData.append('developer_assigned', 'Meadow Energy');
+            formData.append('account_type', 'Small Demand <25 KW');
+            formData.append('utility_provider', 'National Grid');
+            formData.append('agent_id', 'AG001');
+            formData.append('poa_agreement', 'on');
+            
+            // Create a dummy file for testing
+            const dummyFile = new Blob(['%PDF-1.4 Mock utility bill for testing'], { type: 'application/pdf' });
+            formData.append('utility_bill', dummyFile, 'test_utility_bill.pdf');
+            
+            fetch('/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                addLog('📥 Response received');
+                
+                if (data.success) {
+                    addLog('✅ Test completed successfully!');
+                    resultContent.innerHTML = `
+                        <div style="color: green;">
+                            <h4>✅ Phase 1 Test PASSED</h4>
+                            <p><strong>Drive Folder:</strong> ${data.drive_folder}</p>
+                            <p><strong>Documents Generated:</strong></p>
+                            <ul>
+                                <li><a href="${data.documents.utility_bill}" target="_blank">Utility Bill</a></li>
+                                <li><a href="${data.documents.poa}" target="_blank">Power of Attorney</a></li>
+                                <li><a href="${data.documents.agreement}" target="_blank">Developer Agreement</a></li>
+                            </ul>
+                            <p><strong>Next:</strong> Check Google Sheets for logged data</p>
+                        </div>
+                    `;
+                } else {
+                    addLog('❌ Test failed: ' + data.error);
+                    resultContent.innerHTML = `
+                        <div style="color: red;">
+                            <h4>❌ Phase 1 Test FAILED</h4>
+                            <p><strong>Error:</strong> ${data.error}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                addLog('❌ Error: ' + error.message);
+                resultContent.innerHTML = `
+                    <div style="color: red;">
+                        <h4>❌ Phase 1 Test FAILED</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = '🚀 Run Phase 1 End-to-End Test';
+                addLog('🏁 Test completed');
+            });
+        });
+    </script>
+</body>
+</html>
