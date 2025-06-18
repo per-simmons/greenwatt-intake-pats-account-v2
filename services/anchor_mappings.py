@@ -53,6 +53,19 @@ POA_ANCHORS = {
 # Universal Commercial UCB Agreement Anchors (Dynamic page search)
 # These work for National Grid, NYSEG, RG&E commercial agreements
 UCB_COMMERCIAL_ANCHORS = {
+    # Page 2: Agreement Header Fields (Anchor-based)
+    "effective_date": {
+        "anchor": "Effective Date",
+        "dx": -80,  # Move further LEFT from the anchor 
+        "dy": 8     # Move UP less to position in the blank line
+    },
+    "agreement_business_name": {
+        "anchor": "between",
+        "context": "Effective Date",  # Look for "between" near "Effective Date" 
+        "dx": 50,   # Move less to the right to center in the long blank line
+        "dy": 8     # Move UP less to position in the blank line
+    },
+    
     # Page 7: Subscriber Information Fields (Fixed coordinates) - Final positioning adjustment
     "subscriber_attention": {"x": 188.5, "y": 617.8},  # Subscriber Attention field - moved up 10px, right 15px
     "subscriber_business_name": {"x": 209.9, "y": 630.9},  # Subscriber Business Name field - moved up 10px, right 15px

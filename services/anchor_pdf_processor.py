@@ -415,6 +415,14 @@ class AnchorPDFProcessor:
             elif field_name == "customer_info_email":
                 text_value = form_data.get('email', '')
             
+            # Meadow Commercial UCB Agreement - Page 2 Header Fields
+            elif field_name == "effective_date":
+                # Effective Date - use today's date in MM/DD/YYYY format
+                text_value = dt.datetime.now().strftime('%m/%d/%Y')
+            elif field_name == "agreement_business_name":
+                # Business name in agreement header - use account name from form
+                text_value = form_data.get('account_name', '') or form_data.get('business_entity', '')
+            
             # Meadow Commercial UCB Agreement - Page 7 Subscriber Fields
             elif field_name == "subscriber_attention":
                 # Attention field - can use contact name or a specific attention line
