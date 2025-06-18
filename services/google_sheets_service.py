@@ -15,11 +15,11 @@ class GoogleSheetsService:
         # 15-minute cache for sheet lookups
         self.cache = TTLCache(maxsize=32, ttl=900)
         
-        # Column indexes for formatting (0-based) - Updated for new Unique ID column
-        self.MONTHLY_USAGE_COL = 15   # Column P - kWh format (was O, +1 for Unique ID column)
-        self.ANNUAL_USAGE_COL = 16    # Column Q - kWh format (was P, +1 for Unique ID column)
-        self.MONTHLY_CHARGE_COL = 23  # Column X - currency format (was W, +1 for Unique ID column)
-        self.ANNUAL_CHARGE_COL = 24   # Column Y - currency format (was X, +1 for Unique ID column)
+        # Column indexes for formatting (0-based) - Updated for POID (OCR) and Service Address (OCR) columns
+        self.MONTHLY_USAGE_COL = 16   # Column Q - kWh format (+1 for new POID (OCR) column)
+        self.ANNUAL_USAGE_COL = 17    # Column R - kWh format (+1 for new POID (OCR) column)
+        self.MONTHLY_CHARGE_COL = 25  # Column Z - currency format (+2 for new POID (OCR) and Service Address (OCR) columns)
+        self.ANNUAL_CHARGE_COL = 26   # Column AA - currency format (+2 for new POID (OCR) and Service Address (OCR) columns)
         
     def create_headers_if_needed(self):
         headers = [
@@ -37,11 +37,13 @@ class GoogleSheetsService:
             'Utility Provider (Form)',
             'Utility Name (OCR)',
             'Account Number (OCR)',
+            'POID (Form)',
             'POID (OCR)',
             'Monthly Usage (OCR)',
             'Annual Usage (OCR)',
             'Agent ID',
             'Agent Name',
+            'Service Address (OCR)',
             'POA ID',
             'Utility Bill Link',
             'POA Link',
@@ -53,7 +55,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:Y1'
+                range='A1:AA1'
             ).execute()
             
             existing_values = result.get('values', [])
@@ -65,7 +67,7 @@ class GoogleSheetsService:
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range='A1:Y1',
+                    range='A1:AA1',
                     valueInputOption='RAW',
                     body=body
                 ).execute()
@@ -120,7 +122,7 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Y',
+                range='A:AA',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
@@ -129,9 +131,9 @@ class GoogleSheetsService:
             # Format the newly added row
             if 'updates' in result and 'updatedRange' in result['updates']:
                 updated_range = result['updates']['updatedRange']
-                # Extract row number from range like "Sheet1!A2:Y2"
+                # Extract row number from range like "Sheet1!A2:AA2"
                 import re
-                row_match = re.search(r'!A(\d+):Y\d+', updated_range)
+                row_match = re.search(r'!A(\d+):AA\d+', updated_range)
                 if row_match:
                     row_number = int(row_match.group(1))
                     
@@ -257,7 +259,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Y'
+                range='A:AA'
             ).execute()
             
             return result.get('values', [])

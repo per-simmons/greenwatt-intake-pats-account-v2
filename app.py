@@ -371,7 +371,10 @@ def test_template_processing():
             'account_number': '987654321',
             'poid': 'TEST123456',
             'monthly_usage': '1500',
-            'annual_usage': '18000'
+            'annual_usage': '18000',
+            'service_address': '123 Oak Street, Buffalo, NY 14201',
+            'monthly_charge': '185.45',
+            'annual_charge': '2225.40'
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -664,7 +667,10 @@ def test_pixel_perfect_poa():
             'account_number': '123456789',
             'poid': 'TEST123456',
             'monthly_usage': '1000',
-            'annual_usage': '12000'
+            'annual_usage': '12000',
+            'service_address': '456 Maple Avenue, Rochester, NY 14614',
+            'monthly_charge': '145.75',
+            'annual_charge': '1749.00'
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -738,7 +744,10 @@ def test_pixel_perfect_agreement():
             'account_number': '123456789',
             'poid': 'TEST123456',
             'monthly_usage': '1000',
-            'annual_usage': '12000'
+            'annual_usage': '12000',
+            'service_address': '789 Pine Street, Syracuse, NY 13201',
+            'monthly_charge': '165.25',
+            'annual_charge': '1983.00'
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -820,7 +829,10 @@ def test_pixel_perfect_full():
             'account_number': '123456789',
             'poid': 'TEST123456',
             'monthly_usage': '1000',
-            'annual_usage': '12000'
+            'annual_usage': '12000',
+            'service_address': '321 Elm Street, Albany, NY 12208',
+            'monthly_charge': '155.90',
+            'annual_charge': '1870.80'
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -962,29 +974,33 @@ def submit_form():
         unique_id = generate_unique_id()
         
         sheet_data = [
-            unique_id,                       # Unique submission ID (first column)
-            submission_date.strftime('%Y-%m-%d %H:%M:%S'),
-            form_data['business_entity'],
-            form_data['account_name'],
-            form_data['contact_name'],
-            form_data['title'],
-            form_data['phone'],
-            form_data['email'],
-            form_data['service_addresses'],
-            form_data['developer_assigned'],
-            form_data['account_type'],
-            form_data['utility_provider'],  # Form utility (kept separate)
-            utility_name_final,             # OCR utility (wins if present)
-            ocr_data.get('account_number', ''),
-            ocr_data.get('poid', ''),
-            ocr_data.get('monthly_usage', ''),
-            ocr_data.get('annual_usage', ''),
-            form_data['agent_id'],
-            agent_name,
-            poa_id,                         # Unique POA ID
-            utility_bill_link,
-            poa_link,
-            agreement_link
+            unique_id,                       # Unique submission ID (A)
+            submission_date.strftime('%Y-%m-%d %H:%M:%S'),  # Submission Date (B)
+            form_data['business_entity'],    # Business Entity Name (C)
+            form_data['account_name'],       # Account Name (D)
+            form_data['contact_name'],       # Contact Name (E)
+            form_data['title'],              # Title (F)
+            form_data['phone'],              # Phone (G)
+            form_data['email'],              # Email (H)
+            form_data['service_addresses'],  # Service Address (I)
+            form_data['developer_assigned'], # Developer Assigned (J)
+            form_data['account_type'],       # Account Type (K)
+            form_data['utility_provider'],  # Utility Provider (Form) (L)
+            utility_name_final,             # Utility Name (OCR) (M)
+            ocr_data.get('account_number', ''),  # Account Number (OCR) (N)
+            form_data.get('poid', ''),       # POID (Form) (O) - NEW
+            ocr_data.get('poid', ''),        # POID (OCR) (P) - MOVED from O
+            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR) (Q)
+            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR) (R)
+            form_data['agent_id'],           # Agent ID (S)
+            agent_name,                      # Agent Name (T)
+            ocr_data.get('service_address', ''),  # Service Address (OCR) (U) - NEW
+            poa_id,                          # POA ID (V)
+            utility_bill_link,              # Utility Bill Link (W)
+            poa_link,                        # POA Link (X)
+            agreement_link,                  # Agreement Link (Y)
+            ocr_data.get('monthly_charge', ''),   # Monthly Charge (OCR) (Z) - NEW
+            ocr_data.get('annual_charge', '')     # Annual Charge (OCR) (AA) - NEW
         ]
         
         print(f"Attempting to insert sheet data: {sheet_data}")

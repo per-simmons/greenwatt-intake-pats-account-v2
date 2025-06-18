@@ -51,6 +51,9 @@ customer_name     – String
 account_number    – String
 poid              – String (may be empty)
 monthly_usage_kwh – Integer (no commas)
+service_address   – String (may be empty)
+monthly_charge    – Number (may be empty)
+annual_charge     – Number (may be empty)
   
 Rules:
 • Utility name: Look for these exact company names or their websites in the text:
@@ -73,7 +76,12 @@ Rules:
 
 • Account number = first 8–18 character sequence containing at least 6 digits appearing within 50 characters AFTER: ["account","acct","account no","account number"] (case-insensitive). Keep hyphens and leading zeros.
 
-• POID = first 6–12-digit sequence after "POID" or "Point ID".
+• POID = Point of Delivery ID for RG&E/NYSEG bills:
+  - For RG&E bills: Look for "PoD ID" or "Point of Delivery ID" in top right section
+  - For NYSEG bills: Look for "PoD ID" or "Point of Delivery ID" in top right section  
+  - For other utilities: Look for "POID", "Point ID", or similar near account information
+  - Extract the 6-12 digit sequence that follows these identifiers
+  - If not found, return empty string (National Grid typically doesn't have POID)
 
 • monthly_usage_kwh = Find the ENERGY CONSUMPTION in kWh (kilowatt-hours) for this billing period:
   - Look for numbers followed by "kWh" that represent electricity consumed
@@ -83,7 +91,23 @@ Rules:
   - This is ENERGY consumed, NOT dollar amounts
   - Return as integer (round if decimal, strip commas)
 
-If a field isn't present, return an empty string.
+• service_address = Service address from utility bill:
+  - Look for service address in bill header or account information section
+  - Usually appears after "Service Address:", "Service Location:", or "Property Address:"
+  - Extract full address including street, city, state, zip
+  - Different from billing/mailing address - this is where electricity is delivered
+
+• monthly_charge = Total monthly electricity charge in dollars:
+  - Look for "Total Amount Due", "Current Charges", "Amount Due This Month"
+  - Extract dollar amount for electricity service (excluding taxes/fees if possible)
+  - Return as number without dollar sign or commas (e.g., 125.67)
+
+• annual_charge = Estimated annual electricity cost:
+  - Calculate from monthly charge × 12 if only monthly available
+  - Look for "Annual Cost", "Yearly Total", or similar if explicitly stated
+  - Return as number without dollar sign or commas
+
+If a field isn't present, return an empty string (or 0 for numbers).
 Respond with JSON ONLY, no commentary.
 
 Text to parse:

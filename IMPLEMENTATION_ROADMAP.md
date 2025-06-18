@@ -174,42 +174,47 @@ This roadmap outlines the step-by-step implementation plan to bring the current 
 
 **Acceptance Criteria**: System places signatures and data with pixel-perfect precision using anchor-text detection ✅
 
-### 3.6 **NEW**: Document ID & Timestamp Integration
+### 3.6 **COMPLETED**: Document ID & Timestamp Integration ✅
 **Goal**: Add unique identifiers and generation timestamps to all PDF documents
 
-#### 3.6.1 POA Document Enhancement
-- [ ] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below customer phone number field
-- [ ] Add POA ID (POA-YYYYMMDDHHMSS-xxxxxx) below customer phone number field  
-- [ ] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
-- [ ] Create anchor mapping for phone number field placement
-- [ ] Implement precise coordinate offset calculation for ID placement
+#### 3.6.1 POA Document Enhancement ✅
+- [x] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below customer phone number field
+- [x] Add POA ID (POA-YYYYMMDDHHMSS-xxxxxx) below customer phone number field  
+- [x] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
+- [x] Create anchor mapping for phone number field placement
+- [x] Implement precise coordinate offset calculation for ID placement
 
-#### 3.6.2 Community Solar Agreement Enhancement
-- [ ] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below Title field in Subscriber section
-- [ ] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
-- [ ] Create anchor mapping for Title field in Subscriber section
-- [ ] Focus on Meadow Energy templates (primary use case)
-- [ ] Ensure placement doesn't interfere with signature areas
+#### 3.6.2 Community Solar Agreement Enhancement ✅
+- [x] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below Title field in Subscriber section
+- [x] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
+- [x] Create anchor mapping for Title field in Subscriber section
+- [x] Focus on Meadow Energy templates (primary use case)
+- [x] Ensure placement doesn't interfere with signature areas
 
-#### 3.6.3 Timestamp Generation System
-- [ ] Implement EST timezone-aware timestamp generation
-- [ ] Create consistent timestamp format across all documents
-- [ ] Ensure timestamp reflects actual document generation time
-- [ ] Add timestamp to both overlay generation and Google Sheets logging
+#### 3.6.3 Timestamp Generation System ✅
+- [x] Implement EST timezone-aware timestamp generation with pytz
+- [x] Create consistent timestamp format across all documents
+- [x] Ensure timestamp reflects actual document generation time
+- [x] Add timestamp to both overlay generation and Google Sheets logging
 
-#### 3.6.4 Anchor Configuration Updates
-- [ ] Add phone number anchor detection to POA templates
-- [ ] Add Title field anchor detection to UCB agreement templates
-- [ ] Test coordinate accuracy for new ID/timestamp placement
-- [ ] Verify text doesn't overlap with existing form fields
+#### 3.6.4 Anchor Configuration Updates ✅
+- [x] Add phone number anchor detection to POA templates ("Phone Number" anchor)
+- [x] Add Title field anchor detection to UCB agreement templates
+- [x] Test coordinate accuracy for new ID/timestamp placement
+- [x] Verify text doesn't overlap with existing form fields
 
-#### 3.6.5 Integration Testing
-- [ ] Test POA documents show both Submission ID and POA ID with timestamp
-- [ ] Test Community Solar Agreements show only Submission ID with timestamp
-- [ ] Verify placement positioning is consistent across template variations
-- [ ] Validate timestamp accuracy and EST timezone formatting
+#### 3.6.5 Integration Testing ✅
+- [x] Test POA documents show both Submission ID and POA ID with timestamp
+- [x] Test Community Solar Agreements show only Submission ID with timestamp
+- [x] Verify placement positioning is consistent across template variations
+- [x] Validate timestamp accuracy and EST timezone formatting
 
-**Acceptance Criteria**: All generated PDFs include appropriate unique identifiers and generation timestamps with precise placement
+#### 3.6.6 Professional Formatting Enhancement ✅
+- [x] Format fields with labels: "Unique ID: [id]" and "Date Generated: [timestamp]"
+- [x] Position fields with adequate white space for professional appearance
+- [x] Test both POA and Agreement templates successfully
+
+**Acceptance Criteria**: All generated PDFs include appropriate unique identifiers and generation timestamps with precise placement ✅
 
 ### 3.7 **COMPLETED**: Meadow Agreement Subscriber Fields Implementation ✅  
 **Goal**: Populate subscriber information fields on page 7 of all Meadow agreements (National Grid, NYSEG, RGE)
