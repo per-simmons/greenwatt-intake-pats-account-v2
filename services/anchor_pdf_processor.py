@@ -382,6 +382,27 @@ class AnchorPDFProcessor:
             elif field_name == "poa_id":
                 text_value = poa_id or ""
             
+            # Mass Market Customer Information Fields
+            elif field_name == "customer_info_name":
+                text_value = form_data.get('contact_name', '') or form_data.get('account_name', '')
+            elif field_name == "customer_info_address":
+                # Extract street address from service addresses
+                addresses = form_data.get('service_addresses', '')
+                text_value = self._parse_street_address(addresses)
+            elif field_name == "customer_info_city":
+                addresses = form_data.get('service_addresses', '')
+                text_value = self._parse_city(addresses)
+            elif field_name == "customer_info_state":
+                addresses = form_data.get('service_addresses', '')
+                text_value = self._parse_state(addresses)
+            elif field_name == "customer_info_zip":
+                addresses = form_data.get('service_addresses', '')
+                text_value = self._parse_zip(addresses)
+            elif field_name == "customer_info_phone":
+                text_value = form_data.get('phone', '')
+            elif field_name == "customer_info_email":
+                text_value = form_data.get('email', '')
+            
             if text_value:
                 # Organize field data by page
                 if page_num not in field_data_by_page:
@@ -408,3 +429,71 @@ class AnchorPDFProcessor:
             return output_path, poa_id
         else:
             return output_path
+    
+    def _parse_street_address(self, address_text):
+        """Extract street address from service addresses field"""
+        if not address_text:
+            return ""
+        
+        # Handle common address formats:
+        # "123 Main St, New York, NY 10001"
+        # "123 Main St\nNew York, NY 10001" 
+        
+        # Split by comma or newline, take first part
+        lines = address_text.replace('\n', ',').split(',')
+        street = lines[0].strip() if lines else ""
+        return street
+    
+    def _parse_city(self, address_text):
+        """Extract city from service addresses field"""
+        if not address_text:
+            return ""
+        
+        try:
+            # Handle format: "123 Main St, New York, NY 10001"
+            parts = address_text.replace('\n', ',').split(',')
+            if len(parts) >= 2:
+                city = parts[1].strip()
+                return city
+        except:
+            pass
+        
+        return ""
+    
+    def _parse_state(self, address_text):
+        """Extract state from service addresses field"""
+        if not address_text:
+            return ""
+        
+        try:
+            # Handle format: "123 Main St, New York, NY 10001"
+            parts = address_text.replace('\n', ',').split(',')
+            if len(parts) >= 3:
+                # State and zip are usually in the last part: "NY 10001"
+                state_zip = parts[2].strip().split()
+                if state_zip:
+                    state = state_zip[0]
+                    return state
+        except:
+            pass
+        
+        return ""
+    
+    def _parse_zip(self, address_text):
+        """Extract ZIP code from service addresses field"""
+        if not address_text:
+            return ""
+        
+        try:
+            # Handle format: "123 Main St, New York, NY 10001"
+            parts = address_text.replace('\n', ',').split(',')
+            if len(parts) >= 3:
+                # State and zip are usually in the last part: "NY 10001"
+                state_zip = parts[2].strip().split()
+                if len(state_zip) >= 2:
+                    zip_code = state_zip[1]
+                    return zip_code
+        except:
+            pass
+        
+        return ""

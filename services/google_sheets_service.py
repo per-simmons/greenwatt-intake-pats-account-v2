@@ -270,6 +270,17 @@ class GoogleSheetsService:
         cache_key = f"agent_{agent_id}"
         if cache_key in self.cache:
             return self.cache[cache_key]
+        
+        # Hardcoded fallback for specific agent IDs
+        hardcoded_agents = {
+            "0000": "Jason Pritchard"
+        }
+        
+        if agent_id in hardcoded_agents:
+            agent_name = hardcoded_agents[agent_id]
+            self.cache[cache_key] = agent_name
+            print(f"Found agent {agent_id} -> {agent_name} (hardcoded)")
+            return agent_name
             
         try:
             # Try both sheet name variations and column arrangements
@@ -393,20 +404,28 @@ class GoogleSheetsService:
                 range="Developer_Mapping"
             ).execute().get("values", [])
             
-            # Look for exact match (skip header)
+            # For Mass Market [Residential] account type, prioritize Mass Market template
+            if account_type == "Mass Market [Residential]":
+                # First pass: Look for Mass Market template for this developer
+                for row in rows[1:]:
+                    if len(row) >= 3:
+                        row_developer = row[0].strip()
+                        row_utility = row[1].strip()
+                        row_filename = row[2].strip()
+                        
+                        if row_developer == developer and row_utility == "Mass Market":
+                            print(f"Using Mass Market template for {developer}: {row_filename}")
+                            self.cache[cache_key] = row_filename
+                            return row_filename
+            
+            # Second pass or non-Mass Market: Look for exact developer + utility match
             for row in rows[1:]:
                 if len(row) >= 3:
                     row_developer = row[0].strip()
                     row_utility = row[1].strip()
                     row_filename = row[2].strip()
                     
-                    # Check for Mass Market override
-                    if account_type == "Mass Market [Residential]" and row_utility == "Mass Market":
-                        if row_developer == developer:
-                            self.cache[cache_key] = row_filename
-                            return row_filename
-                    # Check for exact developer + utility match
-                    elif row_developer == developer and row_utility == utility:
+                    if row_developer == developer and row_utility == utility:
                         self.cache[cache_key] = row_filename
                         return row_filename
             

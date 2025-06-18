@@ -175,6 +175,43 @@ This roadmap outlines the step-by-step implementation plan to bring the current 
 
 **Acceptance Criteria**: System places signatures and data with pixel-perfect precision using anchor-text detection
 
+### 3.6 **NEW**: Document ID & Timestamp Integration
+**Goal**: Add unique identifiers and generation timestamps to all PDF documents
+
+#### 3.6.1 POA Document Enhancement
+- [ ] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below customer phone number field
+- [ ] Add POA ID (POA-YYYYMMDDHHMSS-xxxxxx) below customer phone number field  
+- [ ] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
+- [ ] Create anchor mapping for phone number field placement
+- [ ] Implement precise coordinate offset calculation for ID placement
+
+#### 3.6.2 Community Solar Agreement Enhancement
+- [ ] Add Submission ID (SUB-YYYYMMDDHHMSS-xxxxxx) below Title field in Subscriber section
+- [ ] Add generation timestamp in format "Generated 12/18/2024 at 2:17 PM EST"
+- [ ] Create anchor mapping for Title field in Subscriber section
+- [ ] Focus on Meadow Energy templates (primary use case)
+- [ ] Ensure placement doesn't interfere with signature areas
+
+#### 3.6.3 Timestamp Generation System
+- [ ] Implement EST timezone-aware timestamp generation
+- [ ] Create consistent timestamp format across all documents
+- [ ] Ensure timestamp reflects actual document generation time
+- [ ] Add timestamp to both overlay generation and Google Sheets logging
+
+#### 3.6.4 Anchor Configuration Updates
+- [ ] Add phone number anchor detection to POA templates
+- [ ] Add Title field anchor detection to UCB agreement templates
+- [ ] Test coordinate accuracy for new ID/timestamp placement
+- [ ] Verify text doesn't overlap with existing form fields
+
+#### 3.6.5 Integration Testing
+- [ ] Test POA documents show both Submission ID and POA ID with timestamp
+- [ ] Test Community Solar Agreements show only Submission ID with timestamp
+- [ ] Verify placement positioning is consistent across template variations
+- [ ] Validate timestamp accuracy and EST timezone formatting
+
+**Acceptance Criteria**: All generated PDFs include appropriate unique identifiers and generation timestamps with precise placement
+
 ---
 
 ## PHASE 4: SMS Integration & Enhanced Notifications

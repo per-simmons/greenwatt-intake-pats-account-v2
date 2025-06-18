@@ -83,24 +83,61 @@ UCB_COMMERCIAL_ANCHORS = {
 
 # Mass Market Agreement Anchors
 MASS_MARKET_ANCHORS = {
+    # Page 1: Customer Information Box
+    "customer_info_name": {
+        "anchor": "Customer",
+        "dx": 150,  # Position in the data area of the box
+        "dy": 5,    # Slightly below the header
+        "font_size": 10
+    },
+    "customer_info_address": {
+        "anchor": "Customer", 
+        "dx": 150,  # Same X as name
+        "dy": 20,   # Second row 
+        "font_size": 10
+    },
+    "customer_info_city": {
+        "anchor": "Customer",
+        "dx": 300,  # Middle of the row
+        "dy": 20,   # Same row as address
+        "font_size": 10
+    },
+    "customer_info_state": {
+        "anchor": "Customer", 
+        "dx": 450,  # Right side for state
+        "dy": 20,
+        "font_size": 10
+    },
+    "customer_info_zip": {
+        "anchor": "Customer",
+        "dx": 500,  # Far right for zip
+        "dy": 20,
+        "font_size": 10
+    },
+    "customer_info_phone": {
+        "anchor": "Customer",
+        "dx": 150,  # Left side of third row
+        "dy": 35,   # Third row
+        "font_size": 10
+    },
+    "customer_info_email": {
+        "anchor": "Customer",
+        "dx": 300,  # Right side of third row  
+        "dy": 35,
+        "font_size": 10
+    },
+    
+    # Page 2: Signature Section
     "customer_signature": {
-        "anchor": "Subscriber Signature:",
-        "dx": 150, 
+        "anchor": "Signature of Subscriber:",
+        "dx": 280,  # Position signature to the right of the text
         "dy": -2
     },
-    "printed_name": {
-        "anchor": "Print Name:",
-        "dx": 100, 
-        "dy": -2
-    },
-    "date": {
+    "date_signed": {
         "anchor": "Date:",
-        "dx": 60, 
-        "dy": -2
-    },
-    "email": {
-        "anchor": "Email Address:",
-        "dx": 120, 
+        "context": "Signature of Subscriber:",  # Look for Date near Subscriber signature, not CDG Host
+        "context_preference": "second",  # Use second Date field (subscriber's date)
+        "dx": 50,  # Reduced offset - place date in the field, not far to the right
         "dy": -2
     }
 }
