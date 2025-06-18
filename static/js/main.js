@@ -119,16 +119,111 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize file upload handlers
     setupFileUploads();
     
+    // Real-time progress tracking variables
+    let progressInterval = null;
+    let progressStartTime = null;
+    
+    // Real-time progress polling function
+    async function pollProgress(sessionId) {
+        try {
+            const response = await fetch(`/progress/${sessionId}`);
+            const progress = await response.json();
+            
+            // Update progress UI elements
+            updateProgressUI(progress);
+            
+            // Check if processing is complete
+            if (progress.status === 'completed') {
+                clearInterval(progressInterval);
+                showCompletionResult(progress);
+            } else if (progress.status === 'error') {
+                clearInterval(progressInterval);
+                showErrorResult(progress);
+            }
+        } catch (error) {
+            console.error('Error polling progress:', error);
+            // Continue polling on network errors (temporary issues)
+        }
+    }
+    
+    // Update progress UI with real-time data
+    function updateProgressUI(progress) {
+        const progressFill = document.getElementById('progressFill');
+        const progressPercent = document.getElementById('progressPercent');
+        
+        // Update progress bar
+        if (progressFill && progress.progress !== undefined) {
+            progressFill.style.width = `${progress.progress}%`;
+        }
+        
+        // Update percentage text
+        if (progressPercent && progress.progress !== undefined) {
+            progressPercent.textContent = `${Math.round(progress.progress)}%`;
+        }
+    }
+    
+    
+    // Show successful completion result
+    function showCompletionResult(progress) {
+        loading.style.display = 'none';
+        result.style.display = 'block';
+        result.className = 'result success';
+        
+        const data = progress.result_data || {};
+        result.innerHTML = `
+            <h3>Submission Successful!</h3>
+            <p>Your application has been processed successfully.</p>
+            <p><strong>Processing Time:</strong> ${formatElapsedTime()}</p>
+            <p><strong>Drive Folder:</strong> ${data.drive_folder || 'Generated successfully'}</p>
+            <p><strong>Documents:</strong></p>
+            <ul>
+                ${data.documents ? `
+                    <li><a href="${data.documents.utility_bill}" target="_blank">Utility Bill</a></li>
+                    <li><a href="${data.documents.poa}" target="_blank">Power of Attorney</a></li>
+                    <li><a href="${data.documents.agreement}" target="_blank">Community Solar Agreement</a></li>
+                ` : '<li>Documents generated and uploaded successfully</li>'}
+            </ul>
+            <button onclick="location.reload()" style="margin-top: 20px;">Submit Another</button>
+        `;
+    }
+    
+    // Show error result
+    function showErrorResult(progress) {
+        loading.style.display = 'none';
+        result.style.display = 'block';
+        result.className = 'result error';
+        result.innerHTML = `
+            <h3>Processing Error</h3>
+            <p>${progress.error || 'An error occurred during processing.'}</p>
+            <p><strong>Failed at:</strong> ${progress.step_name || 'Unknown step'}</p>
+            <button onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
+        `;
+    }
+    
+    // Format elapsed time for display
+    function formatElapsedTime() {
+        if (!progressStartTime) return 'Unknown';
+        const elapsed = Math.floor((new Date() - progressStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const formData = new FormData(form);
         
+        // Hide form and show loading with progress tracking
         form.style.display = 'none';
         loading.style.display = 'block';
         result.style.display = 'none';
         
+        // Initialize progress tracking
+        progressStartTime = new Date();
+        
         try {
+            // Submit form and get session ID
             const response = await fetch('/submit', {
                 method: 'POST',
                 body: formData
@@ -136,28 +231,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             
-            loading.style.display = 'none';
-            result.style.display = 'block';
-            
-            if (response.ok) {
-                result.className = 'result success';
-                result.innerHTML = `
-                    <h3>Submission Successful!</h3>
-                    <p>Your application has been processed successfully.</p>
-                    <p><strong>Drive Folder:</strong> ${data.drive_folder}</p>
-                    <p><strong>Documents:</strong></p>
-                    <ul>
-                        <li><a href="${data.documents.utility_bill}" target="_blank">Utility Bill</a></li>
-                        <li><a href="${data.documents.poa}" target="_blank">Power of Attorney</a></li>
-                        <li><a href="${data.documents.agreement}" target="_blank">Community Solar Agreement</a></li>
-                    </ul>
-                    <button onclick="location.reload()" style="margin-top: 20px;">Submit Another</button>
-                `;
+            if (response.ok && data.session_id) {
+                // Start polling progress every 1 second
+                progressInterval = setInterval(() => {
+                    pollProgress(data.session_id);
+                }, 1000);
+                
+                // Start with initial progress state
+                updateProgressUI({
+                    progress: 5
+                });
             } else {
+                // Handle immediate errors
+                loading.style.display = 'none';
+                result.style.display = 'block';
                 result.className = 'result error';
                 result.innerHTML = `
-                    <h3>Error</h3>
-                    <p>${data.error || 'An error occurred processing your submission.'}</p>
+                    <h3>Submission Error</h3>
+                    <p>${data.error || 'Failed to start processing.'}</p>
                     <button onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
                 `;
             }
@@ -166,8 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
             result.style.display = 'block';
             result.className = 'result error';
             result.innerHTML = `
-                <h3>Error</h3>
-                <p>Network error: ${error.message}</p>
+                <h3>Network Error</h3>
+                <p>Failed to submit form: ${error.message}</p>
                 <button onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
             `;
         }

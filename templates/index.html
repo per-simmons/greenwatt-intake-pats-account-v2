@@ -128,8 +128,22 @@
         </form>
         
         <div id="loading" class="loading" style="display: none;">
-            <div class="spinner"></div>
-            <p>Processing your submission...</p>
+            <div class="loading-content">
+                <div class="loading-header">
+                    <div class="spinner"></div>
+                    <h3>Processing Your Submission</h3>
+                    <p class="loading-subtitle">This usually takes 1-2 minutes. Please don't close this window.</p>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div id="result" class="result" style="display: none;"></div>

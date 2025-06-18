@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 import json
 import uuid
+import threading
+import time
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from services.ocr_service import process_utility_bill
@@ -21,6 +23,9 @@ CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
+
+# Global progress tracking
+progress_sessions = {}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('temp', exist_ok=True)
@@ -60,6 +65,132 @@ def generate_unique_id():
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     uuid_hex = uuid.uuid4().hex[:6]  # First 6 characters of UUID
     return f"SUB-{timestamp}-{uuid_hex}"
+
+# Progress tracking functions
+def create_progress_session():
+    """Create a new progress tracking session"""
+    session_id = str(uuid.uuid4())
+    progress_sessions[session_id] = {
+        'current_step': 0,
+        'total_steps': 7,
+        'percentage': 0,
+        'step_name': 'Initializing',
+        'step_description': 'Preparing to process your submission',
+        'start_time': time.time(),
+        'estimated_completion': time.time() + 120,  # 2 minutes estimate
+        'completed': False,
+        'error': None
+    }
+    return session_id
+
+def update_progress(session_id, step, step_name, step_description, percentage=None):
+    """Update progress for a session"""
+    if session_id not in progress_sessions:
+        return
+    
+    session = progress_sessions[session_id]
+    session['current_step'] = step
+    session['step_name'] = step_name
+    session['step_description'] = step_description
+    
+    if percentage is None:
+        # Calculate percentage based on step
+        percentage = min(int((step / session['total_steps']) * 100), 100)
+    
+    session['percentage'] = percentage
+    
+    # Update time estimates
+    elapsed = time.time() - session['start_time']
+    if step > 0:
+        estimated_total = (elapsed / step) * session['total_steps']
+        session['estimated_completion'] = session['start_time'] + estimated_total
+    
+    print(f"Progress {session_id}: Step {step}/7 - {step_name} ({percentage}%)")
+
+def complete_progress(session_id, success=True, error=None):
+    """Mark progress as completed"""
+    if session_id not in progress_sessions:
+        return
+    
+    session = progress_sessions[session_id]
+    session['completed'] = True
+    session['percentage'] = 100 if success else session['percentage']
+    session['error'] = error
+    
+    if success:
+        session['step_name'] = 'Complete'
+        session['step_description'] = 'Submission processed successfully'
+
+def cleanup_old_sessions():
+    """Remove old progress sessions (older than 10 minutes)"""
+    current_time = time.time()
+    to_remove = []
+    for session_id, session in progress_sessions.items():
+        if current_time - session['start_time'] > 600:  # 10 minutes
+            to_remove.append(session_id)
+    
+    for session_id in to_remove:
+        del progress_sessions[session_id]
+
+@app.route('/progress/<session_id>')
+def get_progress(session_id):
+    """Get current progress for a session"""
+    cleanup_old_sessions()  # Clean up old sessions
+    
+    if session_id not in progress_sessions:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    session = progress_sessions[session_id]
+    
+    # Calculate remaining time estimate
+    current_time = time.time()
+    elapsed = current_time - session['start_time']
+    
+    if session['completed']:
+        remaining_time = 0
+        time_text = "Complete!"
+    elif session['current_step'] > 0:
+        estimated_total = session['estimated_completion'] - session['start_time']
+        remaining = max(0, estimated_total - elapsed)
+        remaining_time = int(remaining)
+        
+        if remaining_time > 60:
+            time_text = f"About {remaining_time//60} minute(s) remaining"
+        elif remaining_time > 0:
+            time_text = f"About {remaining_time} seconds remaining"
+        else:
+            time_text = "Almost done..."
+    else:
+        remaining_time = 120  # Default estimate
+        time_text = "Estimated time: 1-2 minutes"
+    
+    # Determine status for JavaScript
+    if session['completed'] and not session['error']:
+        status = 'completed'
+    elif session['error']:
+        status = 'error'
+    else:
+        status = 'processing'
+        
+    response_data = {
+        'session_id': session_id,
+        'current_step': session['current_step'],
+        'total_steps': session['total_steps'],
+        'percentage': session['percentage'],
+        'step_name': session['step_name'],
+        'step_description': session['step_description'],
+        'remaining_time': remaining_time,
+        'time_text': time_text,
+        'completed': session['completed'],
+        'error': session['error'],
+        'status': status
+    }
+    
+    # Include result data if completed successfully
+    if status == 'completed' and 'result' in session:
+        response_data['result_data'] = session['result']
+        
+    return jsonify(response_data)
 
 @app.route('/')
 def index():
@@ -889,8 +1020,151 @@ def test_pixel_perfect_full():
             'traceback': traceback.format_exc()
         }), 500
 
+def process_submission_background(session_id, form_data, file_path):
+    """Background processing function with progress tracking"""
+    try:
+        update_progress(session_id, 1, "Uploading Document", "Saving your utility bill securely")
+        
+        # OCR Processing
+        update_progress(session_id, 2, "OCR Analysis", "Reading text from your utility bill")
+        ocr_data = process_utility_bill(file_path, SERVICE_ACCOUNT_INFO)
+        
+        # AI Processing
+        update_progress(session_id, 3, "AI Processing", "Extracting account information")
+        time.sleep(0.5)  # Allow progress update to be visible
+        
+        submission_date = datetime.now()
+        folder_name = f"{submission_date.strftime('%Y-%m-%d')}_{form_data['account_name']}_{form_data['utility_provider']}"
+        
+        # Generate Documents
+        update_progress(session_id, 4, "Generating Documents", "Creating your POA and agreement")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
+        agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
+        
+        # Cloud Storage
+        update_progress(session_id, 5, "Cloud Storage", "Saving to Google Drive")
+        drive_folder_id = drive_service.create_folder(folder_name)
+        
+        utility_bill_id = drive_service.upload_file(file_path, f"utility_bill_{timestamp}.pdf", drive_folder_id)
+        poa_id = drive_service.upload_file(poa_pdf_path, f"poa_{timestamp}.pdf", drive_folder_id)
+        agreement_id = drive_service.upload_file(agreement_pdf_path, f"agreement_{timestamp}.pdf", drive_folder_id)
+        
+        # Generate public links
+        utility_bill_link = drive_service.get_file_link(utility_bill_id)
+        poa_link = drive_service.get_file_link(poa_id)
+        agreement_link = drive_service.get_file_link(agreement_id)
+        
+        # Logging Data
+        update_progress(session_id, 6, "Logging Data", "Recording submission details")
+        
+        # Get agent name and other data
+        agent_name = sheets_service.get_agent_name(form_data['agent_id'])
+        utility_name_final = ocr_data.get('utility_name', form_data['utility_provider'])
+        unique_id = generate_unique_id()
+        poa_id_generated = f"POA-{timestamp}-{unique_id.split('-')[-1]}"
+        
+        sheet_data = [
+            unique_id,                       # Unique submission ID (A)
+            submission_date.strftime('%Y-%m-%d %H:%M:%S'),  # Submission Date (B)
+            form_data['business_entity'],    # Business Entity Name (C)
+            form_data['account_name'],       # Account Name (D)
+            form_data['contact_name'],       # Contact Name (E)
+            form_data['title'],              # Title (F)
+            form_data['phone'],              # Phone (G)
+            form_data['email'],              # Email (H)
+            form_data['service_addresses'],  # Service Address (I)
+            form_data['developer_assigned'], # Developer Assigned (J)
+            form_data['account_type'],       # Account Type (K)
+            form_data['utility_provider'],  # Utility Provider (Form) (L)
+            utility_name_final,             # Utility Name (OCR) (M)
+            ocr_data.get('account_number', ''),  # Account Number (OCR) (N)
+            form_data.get('poid', ''),       # POID (Form) (O) - NEW
+            ocr_data.get('poid', ''),        # POID (OCR) (P) - MOVED from O
+            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR) (Q)
+            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR) (R)
+            form_data['agent_id'],           # Agent ID (S)
+            agent_name,                      # Agent Name (T)
+            ocr_data.get('service_address', ''),  # Service Address (OCR) (U) - NEW
+            poa_id_generated,                # POA ID (V)
+            utility_bill_link,              # Utility Bill Link (W)
+            poa_link,                        # POA Link (X)
+            agreement_link,                  # Agreement Link (Y)
+            ocr_data.get('monthly_charge', ''),   # Monthly Charge (OCR) (Z) - NEW
+            ocr_data.get('annual_charge', '')     # Annual Charge (OCR) (AA) - NEW
+        ]
+        
+        try:
+            result = sheets_service.append_row(sheet_data)
+        except Exception as e:
+            print(f"Sheet insertion failed: {e}")
+        
+        # Notifications
+        update_progress(session_id, 7, "Notifications", "Sending confirmations")
+        
+        # Send email notification to internal team
+        from services.email_service import send_notification_email
+        send_notification_email(
+            agent_name=agent_name,
+            customer_name=form_data['account_name'],
+            utility=form_data['utility_provider'],
+            signed_date=submission_date.strftime('%Y-%m-%d'),
+            annual_usage=ocr_data.get('annual_usage', 'N/A')
+        )
+        
+        # Send SMS verification to customer
+        try:
+            sms_response = sms_service.send_customer_verification_sms(
+                customer_phone=form_data['phone'],
+                customer_name=form_data['contact_name']
+            )
+            print(f"SMS sent: {sms_response}")
+        except Exception as sms_error:
+            print(f"SMS failed: {sms_error}")
+            
+        # Send SMS notification to internal team
+        try:
+            internal_sms_data = {
+                'customer_name': form_data['account_name'],
+                'agent_name': agent_name,
+                'utility': form_data['utility_provider'],
+                'annual_usage': ocr_data.get('annual_usage', 'N/A'),
+                'submission_date': submission_date.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            internal_sms_results = sms_service.send_internal_notification_sms(internal_sms_data)
+            print(f"📱 Internal SMS notifications: {len([r for r in internal_sms_results if r.get('success') if r]) if internal_sms_results else 0} sent successfully")
+            
+        except Exception as e:
+            print(f"⚠️  Error sending internal SMS notifications: {e}")
+        
+        # Store result data in session for retrieval
+        progress_sessions[session_id]['result'] = {
+            'drive_folder': f"https://drive.google.com/drive/folders/{drive_folder_id}",
+            'documents': {
+                'utility_bill': utility_bill_link,
+                'poa': poa_link,
+                'agreement': agreement_link
+            }
+        }
+        
+        # Clean up temporary files
+        os.remove(file_path)
+        os.remove(poa_pdf_path)
+        os.remove(agreement_pdf_path)
+        
+        # Complete successfully
+        complete_progress(session_id, success=True)
+        
+    except Exception as e:
+        print(f"Background processing error: {e}")
+        import traceback
+        traceback.print_exc()
+        complete_progress(session_id, success=False, error=str(e))
+
 @app.route('/submit', methods=['POST'])
 def submit_form():
+    """Modified submit endpoint to use background processing with real-time progress tracking"""
     try:
         form_data = {
             'business_entity': request.form.get('business_entity', ''),
@@ -922,149 +1196,30 @@ def submit_form():
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type'}), 400
         
+        # Save file for background processing
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
-        ocr_data = process_utility_bill(filepath, SERVICE_ACCOUNT_INFO)
+        # Create progress session
+        session_id = create_progress_session()
         
-        # Keep OCR POID and form POID separate - do not override OCR data with form data
-        
-        submission_date = datetime.now()
-        folder_name = f"{submission_date.strftime('%Y-%m-%d')}_{form_data['account_name']}_{form_data['utility_provider']}"
-        
-        poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
-        agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
-        
-        drive_folder_id = drive_service.create_folder(folder_name)
-        
-        utility_bill_id = drive_service.upload_file(filepath, f"utility_bill_{filename}", drive_folder_id)
-        poa_pdf_id = drive_service.upload_file(poa_pdf_path, f"POA_{form_data['account_name']}.pdf", drive_folder_id)
-        agreement_pdf_id = drive_service.upload_file(agreement_pdf_path, f"Agreement_{form_data['account_name']}.pdf", drive_folder_id)
-        
-        utility_bill_link = f"https://drive.google.com/file/d/{utility_bill_id}/view"
-        poa_link = f"https://drive.google.com/file/d/{poa_pdf_id}/view"
-        agreement_link = f"https://drive.google.com/file/d/{agreement_pdf_id}/view"
-        
-        agent_name = sheets_service.get_agent_name(form_data['agent_id'])
-        
-        # Implement "OCR wins" logic for utility name
-        ocr_utility = ocr_data.get('utility_name', '')
-        form_utility = form_data['utility_provider']
-        
-        print(f"OCR utility: '{ocr_utility}'")
-        print(f"Form utility: '{form_utility}'")
-        
-        # OCR wins if it found something, otherwise use form
-        if ocr_utility and ocr_utility.strip():
-            utility_name_final = ocr_utility
-            print(f"Using OCR utility: {utility_name_final}")
-        else:
-            utility_name_final = form_utility
-            print(f"Using form utility: {utility_name_final}")
-        
-        # Get POA ID if it was generated
-        poa_id = form_data.get('poa_id', 'N/A')
-        
-        # Generate unique submission ID
-        unique_id = generate_unique_id()
-        
-        sheet_data = [
-            unique_id,                       # Unique submission ID (A)
-            submission_date.strftime('%Y-%m-%d %H:%M:%S'),  # Submission Date (B)
-            form_data['business_entity'],    # Business Entity Name (C)
-            form_data['account_name'],       # Account Name (D)
-            form_data['contact_name'],       # Contact Name (E)
-            form_data['title'],              # Title (F)
-            form_data['phone'],              # Phone (G)
-            form_data['email'],              # Email (H)
-            form_data['service_addresses'],  # Service Address (I)
-            form_data['developer_assigned'], # Developer Assigned (J)
-            form_data['account_type'],       # Account Type (K)
-            form_data['utility_provider'],  # Utility Provider (Form) (L)
-            utility_name_final,             # Utility Name (OCR) (M)
-            ocr_data.get('account_number', ''),  # Account Number (OCR) (N)
-            form_data.get('poid', ''),       # POID (Form) (O) - NEW
-            ocr_data.get('poid', ''),        # POID (OCR) (P) - MOVED from O
-            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR) (Q)
-            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR) (R)
-            form_data['agent_id'],           # Agent ID (S)
-            agent_name,                      # Agent Name (T)
-            ocr_data.get('service_address', ''),  # Service Address (OCR) (U) - NEW
-            poa_id,                          # POA ID (V)
-            utility_bill_link,              # Utility Bill Link (W)
-            poa_link,                        # POA Link (X)
-            agreement_link,                  # Agreement Link (Y)
-            ocr_data.get('monthly_charge', ''),   # Monthly Charge (OCR) (Z) - NEW
-            ocr_data.get('annual_charge', '')     # Annual Charge (OCR) (AA) - NEW
-        ]
-        
-        print(f"Attempting to insert sheet data: {sheet_data}")
-        try:
-            result = sheets_service.append_row(sheet_data)
-            print(f"Sheet insertion result: {result}")
-        except Exception as e:
-            print(f"Sheet insertion failed: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        # Send email notification to internal team
-        send_notification_email(
-            agent_name=agent_name,
-            customer_name=form_data['account_name'],
-            utility=form_data['utility_provider'],
-            signed_date=submission_date.strftime('%Y-%m-%d'),
-            annual_usage=ocr_data.get('annual_usage', 'N/A')
+        # Start background processing thread
+        import threading
+        thread = threading.Thread(
+            target=process_submission_background,
+            args=(session_id, form_data, filepath)
         )
+        thread.daemon = True
+        thread.start()
         
-        # Send SMS verification to customer
-        try:
-            customer_sms_result = sms_service.send_customer_verification_sms(
-                customer_phone=form_data['phone'],
-                customer_name=form_data['contact_name']
-            )
-            
-            if customer_sms_result and customer_sms_result.get('success'):
-                print(f"✅ Customer verification SMS sent: {customer_sms_result.get('message_sid')}")
-            else:
-                print(f"⚠️  Customer SMS failed: {customer_sms_result}")
-                
-        except Exception as e:
-            print(f"⚠️  Error sending customer SMS: {e}")
-            # Don't fail the entire submission if SMS fails
-        
-        # Send SMS notification to internal team
-        try:
-            internal_sms_data = {
-                'customer_name': form_data['account_name'],
-                'agent_name': agent_name,
-                'utility': form_data['utility_provider'],
-                'annual_usage': ocr_data.get('annual_usage', 'N/A'),
-                'submission_date': submission_date.strftime('%Y-%m-%d %H:%M:%S')
-            }
-            
-            internal_sms_results = sms_service.send_internal_notification_sms(internal_sms_data)
-            print(f"📱 Internal SMS notifications: {len([r for r in internal_sms_results if r.get('success')])} sent successfully")
-            
-        except Exception as e:
-            print(f"⚠️  Error sending internal SMS notifications: {e}")
-            # Don't fail the entire submission if SMS fails
-        
-        os.remove(filepath)
-        os.remove(poa_pdf_path)
-        os.remove(agreement_pdf_path)
-        
+        # Return session ID for progress tracking
         return jsonify({
             'success': True,
-            'message': 'Submission processed successfully',
-            'drive_folder': folder_name,
-            'documents': {
-                'utility_bill': utility_bill_link,
-                'poa': poa_link,
-                'agreement': agreement_link
-            }
+            'session_id': session_id,
+            'message': 'Processing started - track progress with session ID'
         })
         
     except Exception as e:
