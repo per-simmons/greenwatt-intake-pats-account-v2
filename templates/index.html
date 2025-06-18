@@ -107,12 +107,25 @@
             <!-- 13. Upload Bill Button -->
             <div class="form-group">
                 <label for="utility_bill">Upload Bill (JPEG or PDF)*</label>
-                <div class="upload-area" id="uploadArea">
+                
+                <!-- Mobile-friendly file input (visible on mobile) -->
+                <div class="mobile-upload-container">
+                    <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf" required class="file-input-mobile">
+                    <label for="utility_bill" class="file-input-label">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Choose File</div>
+                        <div class="upload-subtext">Tap to select from camera or photos</div>
+                    </label>
+                </div>
+                
+                <!-- Desktop drag-and-drop area (hidden on mobile) -->
+                <div class="upload-area desktop-only" id="uploadArea">
                     <div class="upload-icon">📄</div>
                     <div class="upload-text">Drag & drop your utility bill here</div>
                     <div class="upload-subtext">or <strong>click to browse</strong></div>
-                    <input type="file" id="utility_bill" name="utility_bill" accept=".jpg,.jpeg,.pdf,.png" required class="file-input">
+                    <input type="file" id="utility_bill_desktop" name="utility_bill_desktop" accept=".jpg,.jpeg,.pdf,.png" class="file-input-hidden">
                 </div>
+                
                 <div id="fileInfo" class="file-info" style="display: none;"></div>
                 <small>Upload JPEG or PDF</small>
             </div>

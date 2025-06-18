@@ -62,7 +62,41 @@ input[type="file"] {
     padding: 5px;
 }
 
-/* Drag and drop upload area */
+/* Mobile-first file upload */
+.mobile-upload-container {
+    display: block;
+}
+
+.file-input-mobile {
+    display: none;
+}
+
+.file-input-label {
+    display: block;
+    border: 2px dashed #ddd;
+    padding: 30px;
+    text-align: center;
+    margin: 10px 0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: #fafafa;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.file-input-label:hover,
+.file-input-label:focus {
+    border-color: #4CAF50;
+    background: #f0f8f0;
+}
+
+.file-input-label:active {
+    border-color: #4CAF50;
+    background: #e8f5e8;
+    transform: scale(0.98);
+}
+
+/* Desktop drag and drop upload area */
 .upload-area {
     border: 2px dashed #ddd;
     padding: 40px;
@@ -73,6 +107,7 @@ input[type="file"] {
     background: #fafafa;
     cursor: pointer;
     position: relative;
+    display: none; /* Hidden by default, shown on desktop */
 }
 
 .upload-area:hover {
@@ -103,7 +138,7 @@ input[type="file"] {
     font-size: 14px;
 }
 
-.file-input {
+.file-input-hidden {
     position: absolute;
     top: 0;
     left: 0;
@@ -111,6 +146,58 @@ input[type="file"] {
     height: 100%;
     opacity: 0;
     cursor: pointer;
+}
+
+/* Desktop-only content */
+.desktop-only {
+    display: none;
+}
+
+/* Media queries for responsive behavior */
+@media (min-width: 768px) {
+    /* On desktop, hide mobile upload and show desktop upload */
+    .mobile-upload-container {
+        display: none;
+    }
+    
+    .desktop-only {
+        display: block;
+    }
+    
+    .upload-area {
+        display: block;
+    }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 767px) {
+    .file-input-label {
+        padding: 25px 15px;
+        font-size: 16px; /* Prevent iOS zoom on focus */
+    }
+    
+    .upload-icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+    }
+    
+    .upload-text {
+        font-size: 16px;
+        margin-bottom: 6px;
+    }
+    
+    .upload-subtext {
+        font-size: 13px;
+    }
+    
+    /* Improve touch targets */
+    .file-input-label {
+        min-height: 60px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
 }
 
 .file-info {

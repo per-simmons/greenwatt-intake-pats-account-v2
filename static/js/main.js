@@ -7,9 +7,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const poidRequired = document.getElementById('poid_required');
     const poidHint = document.getElementById('poid_hint');
     
-    // Drag and drop elements
+    // File upload elements
     const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('utility_bill');
+    const fileInputMobile = document.getElementById('utility_bill');
+    const fileInputDesktop = document.getElementById('utility_bill_desktop');
     const fileInfo = document.getElementById('fileInfo');
     
     // Handle POID requirement based on utility selection
@@ -29,37 +30,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Drag and drop functionality
-    if (uploadArea && fileInput && fileInfo) {
-        // Click to upload
-        uploadArea.addEventListener('click', function() {
-            fileInput.click();
-        });
+    // File upload functionality - handle both mobile and desktop
+    function setupFileUploads() {
+        // Mobile file input handler
+        if (fileInputMobile) {
+            fileInputMobile.addEventListener('change', function(e) {
+                console.log('Mobile file input changed:', e.target.files);
+                if (e.target.files.length > 0) {
+                    // Sync to desktop input and update UI
+                    if (fileInputDesktop) {
+                        fileInputDesktop.files = e.target.files;
+                    }
+                    updateFileInfo(e.target.files[0]);
+                }
+            });
+        }
         
-        // Prevent default drag behaviors
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
-        });
+        // Desktop file input handler
+        if (fileInputDesktop) {
+            fileInputDesktop.addEventListener('change', function(e) {
+                console.log('Desktop file input changed:', e.target.files);
+                if (e.target.files.length > 0) {
+                    // Sync to mobile input and update UI
+                    if (fileInputMobile) {
+                        fileInputMobile.files = e.target.files;
+                    }
+                    updateFileInfo(e.target.files[0]);
+                }
+            });
+        }
         
-        // Highlight drop area when item is dragged over it
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, unhighlight, false);
-        });
-        
-        // Handle dropped files
-        uploadArea.addEventListener('drop', handleDrop, false);
-        
-        // Handle file input change
-        fileInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                updateFileInfo(e.target.files[0]);
-            }
-        });
+        // Desktop drag and drop functionality
+        if (uploadArea && fileInputDesktop) {
+            // Click to upload (desktop only)
+            uploadArea.addEventListener('click', function() {
+                fileInputDesktop.click();
+            });
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop area when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            // Handle dropped files
+            uploadArea.addEventListener('drop', handleDrop, false);
+        }
         
         function preventDefaults(e) {
             e.preventDefault();
@@ -79,7 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const files = dt.files;
             
             if (files.length > 0) {
-                fileInput.files = files;
+                // Set files on both inputs to keep them synced
+                if (fileInputDesktop) fileInputDesktop.files = files;
+                if (fileInputMobile) fileInputMobile.files = files;
                 updateFileInfo(files[0]);
             }
         }
@@ -88,6 +115,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const maxSize = 16 * 1024 * 1024; // 16MB
             const allowedTypes = ['pdf', 'jpg', 'jpeg', 'png'];
             const fileExt = file.name.split('.').pop().toLowerCase();
+            
+            console.log('Updating file info for:', file.name, 'Type:', file.type, 'Size:', file.size);
             
             if (file.size > maxSize) {
                 fileInfo.innerHTML = '<span style="color: #d9534f;">❌ File too large (max 16MB)</span>';
@@ -106,6 +135,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         }
     }
+    
+    // Initialize file upload handlers
+    setupFileUploads();
     
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
