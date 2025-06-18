@@ -899,12 +899,15 @@ def submit_form():
         if not form_data['poa_agreement']:
             return jsonify({'error': 'POA agreement must be accepted'}), 400
         
-        if 'utility_bill' not in request.files:
-            return jsonify({'error': 'No utility bill uploaded'}), 400
+        # Check both possible file input names (mobile and desktop)
+        file = None
+        if 'utility_bill' in request.files and request.files['utility_bill'].filename:
+            file = request.files['utility_bill']
+        elif 'utility_bill_desktop' in request.files and request.files['utility_bill_desktop'].filename:
+            file = request.files['utility_bill_desktop']
         
-        file = request.files['utility_bill']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        if not file:
+            return jsonify({'error': 'No utility bill uploaded'}), 400
         
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type'}), 400
@@ -1629,17 +1632,19 @@ def test_ocr():
     try:
         print(f"🔍 DEBUG: POST request received with files: {list(request.files.keys())}")
         
-        if 'utility_bill' not in request.files:
-            print(f"🔍 DEBUG: No 'utility_bill' in request.files")
+        # Check both possible file input names (mobile and desktop)
+        file = None
+        if 'utility_bill' in request.files and request.files['utility_bill'].filename:
+            file = request.files['utility_bill']
+        elif 'utility_bill_desktop' in request.files and request.files['utility_bill_desktop'].filename:
+            file = request.files['utility_bill_desktop']
+        
+        if not file:
+            print(f"🔍 DEBUG: No file in either 'utility_bill' or 'utility_bill_desktop'")
             return "No file uploaded", 400
         
-        file = request.files['utility_bill']
         print(f"🔍 DEBUG: File object: {file}")
         print(f"🔍 DEBUG: Filename: '{file.filename}'")
-        
-        if file.filename == '':
-            print(f"🔍 DEBUG: Empty filename")
-            return "No file selected", 400
         
         if not allowed_file(file.filename):
             print(f"🔍 DEBUG: File type not allowed for: {file.filename}")
