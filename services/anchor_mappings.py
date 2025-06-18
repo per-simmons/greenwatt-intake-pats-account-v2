@@ -53,34 +53,34 @@ POA_ANCHORS = {
 # Universal Commercial UCB Agreement Anchors (Dynamic page search)
 # These work for National Grid, NYSEG, RG&E commercial agreements
 UCB_COMMERCIAL_ANCHORS = {
-    # Page 7: Subscriber Information Fields (Fixed coordinates)
-    "subscriber_attention": {"x": 180.5, "y": 612.8},  # Subscriber Attention field
-    "subscriber_business_name": {"x": 201.9, "y": 625.9},  # Subscriber Business Name field
-    "subscriber_address": {"x": 172.9, "y": 639.1},  # Subscriber Address field
-    "subscriber_email": {"x": 163.7, "y": 652.5},  # Subscriber Email field
-    "subscriber_phone": {"x": 166.7, "y": 665.8},  # Subscriber Phone field
+    # Page 7: Subscriber Information Fields (Fixed coordinates) - Final positioning adjustment
+    "subscriber_attention": {"x": 188.5, "y": 617.8},  # Subscriber Attention field - moved up 10px, right 15px
+    "subscriber_business_name": {"x": 209.9, "y": 630.9},  # Subscriber Business Name field - moved up 10px, right 15px
+    "subscriber_address": {"x": 180.9, "y": 644.1},  # Subscriber Address field - moved up 10px, right 15px
+    "subscriber_email": {"x": 171.7, "y": 657.5},  # Subscriber Email field - moved up 10px, right 15px
+    "subscriber_phone": {"x": 174.7, "y": 670.8},  # Subscriber Phone field - moved up 10px, right 15px
     
-    # Signature Section Fields (Anchor-based)
+    # Signature Section Fields (Anchor-based) - Adjusted for proper alignment
     "customer_signature": {
         "anchor": "By:",
         "context": "SUBSCRIBER:",  # Look for "By:" after "SUBSCRIBER:" section
         "context_preference": "second",  # Use second match (subscriber vs solar producer)
         "dx": 60, 
-        "dy": 15  # Move down 15 pixels for better positioning
+        "dy": 2  # Moved up 13 pixels (was 15, now 2) for better positioning on signature line
     },
     "printed_name": {
         "anchor": "Name:",
         "context": "SUBSCRIBER:",  # Look for "Name:" after "SUBSCRIBER:" section
         "context_preference": "second",  # Use second match (subscriber vs solar producer)
         "dx": 60, 
-        "dy": 15  # Move down 15 pixels for better positioning
+        "dy": 2  # Moved up 13 pixels (was 15, now 2) for better positioning
     },
     "title": {
         "anchor": "Title:",
         "context": "SUBSCRIBER:",  # Look for "Title:" after "SUBSCRIBER:" section
         "context_preference": "second",  # Use second match (subscriber vs solar producer)
         "dx": 60, 
-        "dy": 15  # Move down 15 pixels for better positioning
+        "dy": 2  # Moved up 13 pixels (was 15, now 2) for better positioning
     },
     # "email": {
     #     "anchor": "Email:",

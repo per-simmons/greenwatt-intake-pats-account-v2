@@ -303,3 +303,12 @@ When `test_utility_bill` appears in filename or processing fails, the system ret
    - Refer to server logs.
 4. Conduct tests autonomously to ensure functionality and performance.
 5. After the server has been successfully shut down and restarted, run the appropriate curl command to access the browser using Playwright MCP.
+
+## Server Management
+
+- Pat will always start the server.
+
+## GitHub Repository Management
+
+- Push changes to the GitHub repository at [greenwatt-intake-pats-account-v2](https://github.com/per-simmons/greenwatt-intake-pats-account-v2) once instructed to "push changes."
+- Note: This repository address will eventually change to the client's own repository.

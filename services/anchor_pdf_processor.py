@@ -188,17 +188,19 @@ class AnchorPDFProcessor:
             max_page_num = max(field_data_by_page.keys())
             
             # Create all pages up to the maximum page number
-            for current_page in range(max_page_num + 1):
-                if current_page > 0:
+            # Note: We need to create pages 1-based to match PDF page numbering
+            for canvas_page in range(max_page_num + 1):
+                # Show new page for all pages except the first one (which is created automatically)
+                if canvas_page > 0:
                     c.showPage()
                 
-                # Process field data if it exists for this page
-                if current_page in field_data_by_page:
-                    field_data = field_data_by_page[current_page]
+                # Process field data if it exists for this page (0-indexed)
+                if canvas_page in field_data_by_page:
+                    field_data = field_data_by_page[canvas_page]
                     
                     # Get page dimensions for this specific page
-                    if current_page < len(pdf.pages):
-                        page = pdf.pages[current_page]
+                    if canvas_page < len(pdf.pages):
+                        page = pdf.pages[canvas_page]
                         current_page_width = page.width
                         current_page_height = page.height
                     else:
