@@ -215,12 +215,57 @@ small {
 
 .checkbox-group {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 12px;
+    line-height: 1.4;
 }
 
 .checkbox-group input[type="checkbox"] {
-    width: auto;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin: 0;
+    margin-top: 2px; /* Align with first line of text */
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    cursor: pointer;
+    margin-bottom: 0;
+    flex: 1;
+}
+
+/* Mobile-specific checkbox improvements */
+@media (max-width: 767px) {
+    .checkbox-group {
+        gap: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin: 15px 0;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        margin-top: 0;
+        transform: scale(1.2); /* Make checkbox larger on mobile */
+        accent-color: #4CAF50; /* Modern browsers checkbox color */
+    }
+    
+    .checkbox-group label {
+        font-size: 16px; /* Prevent iOS zoom */
+        line-height: 1.5;
+        padding-left: 4px;
+    }
+    
+    /* Improve touch target by making the entire checkbox area tappable */
+    .checkbox-group {
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(76, 175, 80, 0.1);
+    }
 }
 
 .submit-btn {
