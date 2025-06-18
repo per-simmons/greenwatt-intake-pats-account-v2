@@ -9,8 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // File upload elements
     const uploadArea = document.getElementById('uploadArea');
-    const fileInputMobile = document.getElementById('utility_bill');
-    const fileInputDesktop = document.getElementById('utility_bill_desktop');
+    const fileInput = document.getElementById('utility_bill');
     const fileInfo = document.getElementById('fileInfo');
     
     // Handle POID requirement based on utility selection
@@ -30,41 +29,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // File upload functionality - handle both mobile and desktop
+    // File upload functionality - unified single input system
     function setupFileUploads() {
-        // Mobile file input handler
-        if (fileInputMobile) {
-            fileInputMobile.addEventListener('change', function(e) {
-                console.log('Mobile file input changed:', e.target.files);
+        // Single file input handler
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                console.log('File input changed:', e.target.files);
                 if (e.target.files.length > 0) {
-                    // Sync to desktop input and update UI
-                    if (fileInputDesktop) {
-                        fileInputDesktop.files = e.target.files;
-                    }
                     updateFileInfo(e.target.files[0]);
                 }
             });
         }
         
-        // Desktop file input handler
-        if (fileInputDesktop) {
-            fileInputDesktop.addEventListener('change', function(e) {
-                console.log('Desktop file input changed:', e.target.files);
-                if (e.target.files.length > 0) {
-                    // Sync to mobile input and update UI
-                    if (fileInputMobile) {
-                        fileInputMobile.files = e.target.files;
-                    }
-                    updateFileInfo(e.target.files[0]);
-                }
-            });
-        }
-        
-        // Desktop drag and drop functionality
-        if (uploadArea && fileInputDesktop) {
-            // Click to upload (desktop only)
+        // Upload area click and drag/drop functionality
+        if (uploadArea && fileInput) {
+            // Click to upload
             uploadArea.addEventListener('click', function() {
-                fileInputDesktop.click();
+                fileInput.click();
             });
             
             // Prevent default drag behaviors
@@ -104,9 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const files = dt.files;
             
             if (files.length > 0) {
-                // Set files on both inputs to keep them synced
-                if (fileInputDesktop) fileInputDesktop.files = files;
-                if (fileInputMobile) fileInputMobile.files = files;
+                // Set files on the single input
+                fileInput.files = files;
                 updateFileInfo(files[0]);
             }
         }

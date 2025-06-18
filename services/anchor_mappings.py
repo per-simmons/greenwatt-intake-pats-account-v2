@@ -53,6 +53,14 @@ POA_ANCHORS = {
 # Universal Commercial UCB Agreement Anchors (Dynamic page search)
 # These work for National Grid, NYSEG, RG&E commercial agreements
 UCB_COMMERCIAL_ANCHORS = {
+    # Page 7: Subscriber Information Fields (Fixed coordinates)
+    "subscriber_attention": {"x": 180.5, "y": 612.8},  # Subscriber Attention field
+    "subscriber_business_name": {"x": 201.9, "y": 625.9},  # Subscriber Business Name field
+    "subscriber_address": {"x": 172.9, "y": 639.1},  # Subscriber Address field
+    "subscriber_email": {"x": 163.7, "y": 652.5},  # Subscriber Email field
+    "subscriber_phone": {"x": 166.7, "y": 665.8},  # Subscriber Phone field
+    
+    # Signature Section Fields (Anchor-based)
     "customer_signature": {
         "anchor": "By:",
         "context": "SUBSCRIBER:",  # Look for "By:" after "SUBSCRIBER:" section

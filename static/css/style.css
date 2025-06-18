@@ -62,57 +62,38 @@ input[type="file"] {
     padding: 5px;
 }
 
-/* Mobile-first file upload */
-.mobile-upload-container {
-    display: block;
-}
-
-.file-input-mobile {
-    display: none;
-}
-
-.file-input-label {
-    display: block;
-    border: 2px dashed #ddd;
-    padding: 30px;
-    text-align: center;
+/* Universal file upload styling */
+.upload-container {
+    position: relative;
     margin: 10px 0;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    background: #fafafa;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
 }
 
-.file-input-label:hover,
-.file-input-label:focus {
-    border-color: #4CAF50;
-    background: #f0f8f0;
-}
-
-.file-input-label:active {
-    border-color: #4CAF50;
-    background: #e8f5e8;
-    transform: scale(0.98);
-}
-
-/* Desktop drag and drop upload area */
 .upload-area {
-    border: 2px dashed #ddd;
-    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    margin: 10px 0;
+    padding: 30px 20px;
+    border: 2px dashed #ddd;
     border-radius: 8px;
     transition: all 0.3s ease;
     background: #fafafa;
     cursor: pointer;
     position: relative;
-    display: none; /* Hidden by default, shown on desktop */
+    min-height: 80px;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .upload-area:hover {
     border-color: #4CAF50;
     background: #f0f8f0;
+}
+
+.upload-area:active {
+    border-color: #4CAF50;
+    background: #e8f5e8;
+    transform: scale(0.98);
 }
 
 .upload-area.dragover {
@@ -146,34 +127,58 @@ input[type="file"] {
     height: 100%;
     opacity: 0;
     cursor: pointer;
+    z-index: 1;
 }
 
-/* Desktop-only content */
-.desktop-only {
+/* Responsive text display - Mobile first */
+.desktop-text,
+.desktop-subtext {
     display: none;
 }
 
-/* Media queries for responsive behavior */
+.mobile-text,
+.mobile-subtext {
+    display: block;
+}
+
+/* Desktop responsive behavior */
 @media (min-width: 768px) {
-    /* On desktop, hide mobile upload and show desktop upload */
-    .mobile-upload-container {
+    .upload-area {
+        padding: 40px;
+        min-height: 120px;
+    }
+    
+    .upload-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+    
+    .upload-text {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+    
+    .upload-subtext {
+        font-size: 14px;
+    }
+    
+    /* Show desktop text, hide mobile text */
+    .mobile-text,
+    .mobile-subtext {
         display: none;
     }
     
-    .desktop-only {
-        display: block;
-    }
-    
-    .upload-area {
+    .desktop-text,
+    .desktop-subtext {
         display: block;
     }
 }
 
 /* Mobile-specific improvements */
 @media (max-width: 767px) {
-    .file-input-label {
+    .upload-area {
         padding: 25px 15px;
-        font-size: 16px; /* Prevent iOS zoom on focus */
+        min-height: 60px;
     }
     
     .upload-icon {
@@ -182,21 +187,12 @@ input[type="file"] {
     }
     
     .upload-text {
-        font-size: 16px;
+        font-size: 16px; /* Prevent iOS zoom on focus */
         margin-bottom: 6px;
     }
     
     .upload-subtext {
         font-size: 13px;
-    }
-    
-    /* Improve touch targets */
-    .file-input-label {
-        min-height: 60px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
     }
 }
 

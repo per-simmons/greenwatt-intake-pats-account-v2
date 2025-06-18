@@ -212,6 +212,52 @@ This roadmap outlines the step-by-step implementation plan to bring the current 
 
 **Acceptance Criteria**: All generated PDFs include appropriate unique identifiers and generation timestamps with precise placement
 
+### 3.7 **NEW**: Meadow Agreement Subscriber Fields Implementation  
+**Goal**: Populate subscriber information fields on page 7 of all Meadow agreements (National Grid, NYSEG, RGE)
+
+#### 3.7.1 PDF Text Analysis & Anchor Detection
+- [ ] Extract text from page 7 of Meadow agreement templates using pdfplumber
+- [ ] Identify anchor text for Subscriber section (likely "Subscriber" or "SUBSCRIBER")  
+- [ ] Map exact coordinates for 5 subscriber fields to the right of labels:
+  - [ ] Attention field coordinate mapping
+  - [ ] Business Name field coordinate mapping  
+  - [ ] Address field coordinate mapping
+  - [ ] Email field coordinate mapping
+  - [ ] Phone field coordinate mapping
+
+#### 3.7.2 Anchor Configuration Updates
+- [ ] Add subscriber field anchors to `UCB_COMMERCIAL_ANCHORS` in `anchor_mappings.py`
+- [ ] Calculate dx/dy offsets for proper right-alignment of text
+- [ ] Test coordinate accuracy across all three Meadow templates
+- [ ] Verify text positioning doesn't interfere with signature areas
+
+#### 3.7.3 Field Processing Logic Enhancement
+- [ ] Add subscriber field mapping logic to `anchor_pdf_processor.py`:
+  - [ ] `subscriber_attention` → `contact_name` from form
+  - [ ] `subscriber_business_name` → `business_entity` from form (fallback to `account_name`)
+  - [ ] `subscriber_address` → `service_addresses` from form
+  - [ ] `subscriber_email` → `email` from form  
+  - [ ] `subscriber_phone` → `phone` from form
+- [ ] Handle business name fallback logic for empty business entity
+- [ ] Implement address formatting for field constraints
+
+#### 3.7.4 Template Testing & Validation
+- [ ] Create test script similar to Mass Market customer info test
+- [ ] Test field population with all three Meadow templates:
+  - [ ] Meadow-National-Grid-Commercial-UCB-Agreement.pdf
+  - [ ] Meadow-NYSEG-Commercial-UCB-Agreement.pdf  
+  - [ ] Meadow-RGE-Commercial-UCB-Agreement.pdf
+- [ ] Verify field alignment and text legibility
+- [ ] Test with various data lengths (long business names, addresses)
+
+#### 3.7.5 Integration Testing
+- [ ] Test complete form submission flow with subscriber field population
+- [ ] Verify fields appear correctly alongside existing signature functionality
+- [ ] Test with different account types (Small Demand, Large Demand)
+- [ ] Validate that page 7 subscriber info doesn't affect other pages
+
+**Acceptance Criteria**: All Meadow agreements automatically populate subscriber information fields on page 7 with form data, properly positioned and formatted
+
 ---
 
 ## PHASE 4: SMS Integration & Enhanced Notifications

@@ -335,23 +335,33 @@ class AnchorPDFProcessor:
         
         # Map form data to template fields
         for field_name, anchor_info in anchor_config.items():
-            anchor_text = anchor_info["anchor"]
-            dx = anchor_info["dx"]
-            dy = anchor_info["dy"]
-            context = anchor_info.get("context")
-            context_preference = anchor_info.get("context_preference")
-            
-            # Find anchor coordinates across all pages
-            result = self.find_anchor_across_pages(template_path, anchor_text, context, context_preference)
-            if not result:
-                print(f"Warning: Could not find anchor '{anchor_text}' anywhere in {template_filename}")
-                continue
-            
-            page_num, x, y = result
-            final_x = x + dx
-            final_y = y + dy
-            
-            print(f"✅ Found '{anchor_text}' on page {page_num + 1} at ({x:.1f}, {y:.1f}) -> placing at ({final_x:.1f}, {final_y:.1f})")
+            # Handle both anchor-based positioning and fixed coordinate positioning
+            if "x" in anchor_info and "y" in anchor_info:
+                # Fixed coordinate positioning (Page 7 subscriber fields)
+                page_num = 6  # Page 7 (0-indexed)
+                final_x = anchor_info["x"]
+                final_y = anchor_info["y"]
+                
+                print(f"✅ Using fixed coordinates for '{field_name}' on page {page_num + 1} at ({final_x:.1f}, {final_y:.1f})")
+            else:
+                # Anchor-based positioning (existing signature fields)
+                anchor_text = anchor_info["anchor"]
+                dx = anchor_info["dx"]
+                dy = anchor_info["dy"]
+                context = anchor_info.get("context")
+                context_preference = anchor_info.get("context_preference")
+                
+                # Find anchor coordinates across all pages
+                result = self.find_anchor_across_pages(template_path, anchor_text, context, context_preference)
+                if not result:
+                    print(f"Warning: Could not find anchor '{anchor_text}' anywhere in {template_filename}")
+                    continue
+                
+                page_num, x, y = result
+                final_x = x + dx
+                final_y = y + dy
+                
+                print(f"✅ Found '{anchor_text}' on page {page_num + 1} at ({x:.1f}, {y:.1f}) -> placing at ({final_x:.1f}, {final_y:.1f})")
             
             # Determine field value and whether it's a signature
             text_value = ""
@@ -402,6 +412,23 @@ class AnchorPDFProcessor:
                 text_value = form_data.get('phone', '')
             elif field_name == "customer_info_email":
                 text_value = form_data.get('email', '')
+            
+            # Meadow Commercial UCB Agreement - Page 7 Subscriber Fields
+            elif field_name == "subscriber_attention":
+                # Attention field - can use contact name or a specific attention line
+                text_value = form_data.get('attention', '') or form_data.get('contact_name', '')
+            elif field_name == "subscriber_business_name":
+                # Business name field - use account name (business entity)
+                text_value = form_data.get('account_name', '') or form_data.get('business_entity', '')
+            elif field_name == "subscriber_address":
+                # Address field - use full service address
+                text_value = form_data.get('service_addresses', '')
+            elif field_name == "subscriber_email":
+                # Email field - use form email
+                text_value = form_data.get('email', '')
+            elif field_name == "subscriber_phone":
+                # Phone field - use form phone
+                text_value = form_data.get('phone', '')
             
             if text_value:
                 # Organize field data by page

@@ -108,22 +108,16 @@
             <div class="form-group">
                 <label for="utility_bill">Upload Bill (JPEG or PDF)*</label>
                 
-                <!-- Mobile-friendly file input (visible on mobile) -->
-                <div class="mobile-upload-container">
-                    <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf" required class="file-input-mobile">
-                    <label for="utility_bill" class="file-input-label">
+                <!-- Universal file input with responsive styling -->
+                <div class="upload-container">
+                    <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf,.jpg,.jpeg,.png" required class="file-input-hidden">
+                    <div class="upload-area" id="uploadArea">
                         <div class="upload-icon">📄</div>
-                        <div class="upload-text">Choose File</div>
-                        <div class="upload-subtext">Tap to select from camera or photos</div>
-                    </label>
-                </div>
-                
-                <!-- Desktop drag-and-drop area (hidden on mobile) -->
-                <div class="upload-area desktop-only" id="uploadArea">
-                    <div class="upload-icon">📄</div>
-                    <div class="upload-text">Drag & drop your utility bill here</div>
-                    <div class="upload-subtext">or <strong>click to browse</strong></div>
-                    <input type="file" id="utility_bill_desktop" name="utility_bill_desktop" accept=".jpg,.jpeg,.pdf,.png" class="file-input-hidden">
+                        <div class="upload-text mobile-text">Choose File</div>
+                        <div class="upload-text desktop-text">Drag & drop your utility bill here</div>
+                        <div class="upload-subtext mobile-subtext">Tap to select from camera or photos</div>
+                        <div class="upload-subtext desktop-subtext">or <strong>click to browse</strong></div>
+                    </div>
                 </div>
                 
                 <div id="fileInfo" class="file-info" style="display: none;"></div>

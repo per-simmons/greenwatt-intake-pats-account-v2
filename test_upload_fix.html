@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desktop Upload Fix Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+        
+        /* Universal file upload styling */
+        .upload-container {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+            cursor: pointer;
+            position: relative;
+            min-height: 80px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+
+        .upload-area:active {
+            border-color: #4CAF50;
+            background: #e8f5e8;
+            transform: scale(0.98);
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e8;
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .file-input-hidden {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        /* Responsive text display - Mobile first */
+        .desktop-text,
+        .desktop-subtext {
+            display: none;
+        }
+
+        .mobile-text,
+        .mobile-subtext {
+            display: block;
+        }
+
+        /* Desktop responsive behavior */
+        @media (min-width: 768px) {
+            .upload-area {
+                padding: 40px;
+                min-height: 120px;
+            }
+            
+            /* Show desktop text, hide mobile text */
+            .mobile-text,
+            .mobile-subtext {
+                display: none;
+            }
+            
+            .desktop-text,
+            .desktop-subtext {
+                display: block;
+            }
+        }
+
+        /* Mobile-specific improvements */
+        @media (max-width: 767px) {
+            .upload-area {
+                padding: 25px 15px;
+                min-height: 60px;
+            }
+            
+            .upload-icon {
+                font-size: 36px;
+                margin-bottom: 10px;
+            }
+            
+            .upload-text {
+                font-size: 16px;
+                margin-bottom: 6px;
+            }
+            
+            .upload-subtext {
+                font-size: 13px;
+            }
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e8;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .test-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🧪 Desktop Upload Fix Test</h2>
+        <p>Test the new unified file upload system. This should work on first try for both desktop and mobile.</p>
+        
+        <form id="testForm">
+            <div class="upload-container">
+                <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf,.jpg,.jpeg,.png" required class="file-input-hidden">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text mobile-text">Choose File</div>
+                    <div class="upload-text desktop-text">Drag & drop your utility bill here</div>
+                    <div class="upload-subtext mobile-subtext">Tap to select from camera or photos</div>
+                    <div class="upload-subtext desktop-subtext">or <strong>click to browse</strong></div>
+                </div>
+            </div>
+            
+            <div id="fileInfo" class="file-info" style="display: none;"></div>
+            
+            <button type="button" class="test-btn" onclick="testUpload()">🚀 Test Upload</button>
+        </form>
+        
+        <div id="results" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('utility_bill');
+        const fileInfo = document.getElementById('fileInfo');
+
+        // Single file input handler
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                console.log('File input changed:', e.target.files);
+                if (e.target.files.length > 0) {
+                    updateFileInfo(e.target.files[0]);
+                }
+            });
+        }
+        
+        // Upload area click and drag/drop functionality
+        if (uploadArea && fileInput) {
+            // Click to upload
+            uploadArea.addEventListener('click', function() {
+                console.log('Upload area clicked, triggering file input...');
+                fileInput.click();
+            });
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop area when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            // Handle dropped files
+            uploadArea.addEventListener('drop', handleDrop, false);
+        }
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+        
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                console.log('Files dropped:', files);
+                // Set files on the single input
+                fileInput.files = files;
+                updateFileInfo(files[0]);
+            }
+        }
+        
+        function updateFileInfo(file) {
+            const maxSize = 16 * 1024 * 1024; // 16MB
+            const allowedTypes = ['pdf', 'jpg', 'jpeg', 'png'];
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            
+            console.log('Updating file info for:', file.name, 'Type:', file.type, 'Size:', file.size);
+            
+            if (file.size > maxSize) {
+                fileInfo.innerHTML = '<span style="color: #d9534f;">❌ File too large (max 16MB)</span>';
+                fileInfo.style.display = 'block';
+                return false;
+            }
+            
+            if (!allowedTypes.includes(fileExt)) {
+                fileInfo.innerHTML = '<span style="color: #d9534f;">❌ Invalid file type (PDF, JPG, PNG only)</span>';
+                fileInfo.style.display = 'block';
+                return false;
+            }
+            
+            fileInfo.innerHTML = `<span style="color: #5cb85c;">✅ Ready: ${file.name} (${(file.size/1024/1024).toFixed(1)}MB)</span>`;
+            fileInfo.style.display = 'block';
+            return true;
+        }
+
+        function testUpload() {
+            const results = document.getElementById('results');
+            
+            if (fileInput.files.length === 0) {
+                results.innerHTML = '<div style="background: #ffe8e8; padding: 15px; border-radius: 4px;"><strong>❌ Test Failed:</strong> No file selected</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            results.innerHTML = `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 4px;">
+                    <h3>✅ Test Successful!</h3>
+                    <p><strong>File Name:</strong> ${file.name}</p>
+                    <p><strong>File Size:</strong> ${(file.size/1024/1024).toFixed(1)}MB</p>
+                    <p><strong>File Type:</strong> ${file.type}</p>
+                    <p><strong>Input Name:</strong> utility_bill</p>
+                    <p><strong>Status:</strong> File upload should work on first try! 🎉</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
