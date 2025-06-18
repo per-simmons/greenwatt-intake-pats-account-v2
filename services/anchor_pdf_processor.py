@@ -293,6 +293,41 @@ class AnchorPDFProcessor:
         uuid_part = uuid.uuid4().hex[:6]
         return f"POA-{timestamp}-{uuid_part}"
     
+    def generate_submission_id(self):
+        """
+        Generate Submission ID with timestamp and UUID.
+        
+        Returns:
+            str: Submission ID in format SUB-YYYYMMDDHHMMS-{uuid_hex}
+        """
+        timestamp = dt.datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        uuid_part = uuid.uuid4().hex[:6]
+        return f"SUB-{timestamp}-{uuid_part}"
+    
+    def generate_est_timestamp(self):
+        """
+        Generate EST timezone-aware timestamp for document generation.
+        
+        Returns:
+            str: Formatted timestamp like "Generated 12/18/2024 at 2:17 PM EST"
+        """
+        import pytz
+        
+        # Get current UTC time
+        utc_now = dt.datetime.utcnow()
+        
+        # Convert to EST timezone
+        est_tz = pytz.timezone('US/Eastern')
+        utc_tz = pytz.UTC
+        
+        # Localize UTC time and convert to EST
+        utc_time = utc_tz.localize(utc_now)
+        est_time = utc_time.astimezone(est_tz)
+        
+        # Format as required
+        formatted_time = est_time.strftime('%m/%d/%Y at %I:%M %p EST')
+        return f"Generated {formatted_time}"
+    
     def process_template_with_anchors(self, template_filename, form_data, ocr_data, timestamp):
         """
         Process a PDF template using anchor-based field placement.
@@ -329,6 +364,14 @@ class AnchorPDFProcessor:
         # Prepare field data organized by page
         field_data_by_page = {}
         poa_id = None
+        submission_id = None
+        generation_timestamp = None
+        
+        # Generate unique IDs and timestamp for all documents
+        submission_id = self.generate_submission_id()
+        generation_timestamp = self.generate_est_timestamp()
+        form_data['submission_id'] = submission_id
+        form_data['generation_timestamp'] = generation_timestamp
         
         # Generate POA ID for POA templates
         if "POA" in template_filename or "Power_of_Attorney" in template_filename:
@@ -393,6 +436,20 @@ class AnchorPDFProcessor:
                 text_value = form_data.get('email', '')
             elif field_name == "poa_id":
                 text_value = poa_id or ""
+            
+            # Document ID & Timestamp Fields (POA templates)
+            elif field_name == "submission_id":
+                text_value = f"Unique ID: {submission_id}" if submission_id else ""
+            elif field_name == "poa_id_placement":
+                text_value = f"POA ID: {poa_id}" if poa_id else ""
+            elif field_name == "generation_timestamp":
+                text_value = f"Date Generated: {generation_timestamp}" if generation_timestamp else ""
+            
+            # Document ID & Timestamp Fields (Agreement templates)
+            elif field_name == "submission_id_agreement":
+                text_value = f"Unique ID: {submission_id}" if submission_id else ""
+            elif field_name == "generation_timestamp_agreement":
+                text_value = f"Date Generated: {generation_timestamp}" if generation_timestamp else ""
             
             # Mass Market Customer Information Fields
             elif field_name == "customer_info_name":

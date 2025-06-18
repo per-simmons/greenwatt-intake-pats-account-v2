@@ -47,6 +47,23 @@ POA_ANCHORS = {
         "anchor": "Email Address:",
         "dx": 120,  # Reduced offset
         "dy": -2
+    },
+    
+    # Document ID & Timestamp Fields (below phone number)
+    "submission_id": {
+        "anchor": "Phone Number",
+        "dx": 0,    # Start at left edge of phone field
+        "dy": 30    # Position lower below phone number for more white space
+    },
+    "poa_id_placement": {
+        "anchor": "Phone Number",
+        "dx": 0,    # Start at left edge of phone field 
+        "dy": 45    # Position below submission ID
+    },
+    "generation_timestamp": {
+        "anchor": "Phone Number",
+        "dx": 0,    # Start at left edge of phone field
+        "dy": 60    # Position below POA ID
     }
 }
 
@@ -94,6 +111,22 @@ UCB_COMMERCIAL_ANCHORS = {
         "context_preference": "second",  # Use second match (subscriber vs solar producer)
         "dx": 60, 
         "dy": 2  # Moved up 13 pixels (was 15, now 2) for better positioning
+    },
+    
+    # Document ID & Timestamp Fields (below Title field in Subscriber section)
+    "submission_id_agreement": {
+        "anchor": "Title:",
+        "context": "SUBSCRIBER:",  # Look for "Title:" in subscriber section
+        "context_preference": "second",  # Use second match (subscriber vs solar producer)
+        "dx": 0,    # Start at left edge of title field
+        "dy": 30    # Position lower below title field
+    },
+    "generation_timestamp_agreement": {
+        "anchor": "Title:",
+        "context": "SUBSCRIBER:",  # Look for "Title:" in subscriber section
+        "context_preference": "second",  # Use second match (subscriber vs solar producer)
+        "dx": 0,    # Start at left edge of title field
+        "dy": 45    # Position lower below submission ID
     },
     # "email": {
     #     "anchor": "Email:",
