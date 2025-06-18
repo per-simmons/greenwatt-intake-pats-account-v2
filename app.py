@@ -930,9 +930,7 @@ def submit_form():
         
         ocr_data = process_utility_bill(filepath, SERVICE_ACCOUNT_INFO)
         
-        # Use form POID if provided, otherwise use OCR extracted POID
-        if form_data['poid']:
-            ocr_data['poid'] = form_data['poid']
+        # Keep OCR POID and form POID separate - do not override OCR data with form data
         
         submission_date = datetime.now()
         folder_name = f"{submission_date.strftime('%Y-%m-%d')}_{form_data['account_name']}_{form_data['utility_provider']}"

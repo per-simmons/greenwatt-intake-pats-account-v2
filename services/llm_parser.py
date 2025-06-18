@@ -196,6 +196,49 @@ Text to parse:
             final_data['monthly_usage'] = ''
             final_data['annual_usage'] = ''
         
+        # Service address
+        final_data['service_address'] = parsed_data.get('service_address', '')
+        
+        # Monthly charge
+        monthly_charge = parsed_data.get('monthly_charge', '')
+        if monthly_charge:
+            try:
+                # Clean and convert monthly charge
+                charge_clean = str(monthly_charge).replace('$', '').replace(',', '').strip()
+                charge_value = float(charge_clean)
+                final_data['monthly_charge'] = str(round(charge_value, 2))
+                print(f"Monthly charge: ${charge_value}")
+            except (ValueError, AttributeError):
+                print("MONTHLY_CHARGE_PARSE_ERROR")
+                final_data['monthly_charge'] = ''
+        else:
+            final_data['monthly_charge'] = ''
+        
+        # Annual charge
+        annual_charge = parsed_data.get('annual_charge', '')
+        if annual_charge:
+            try:
+                # Clean and convert annual charge
+                annual_clean = str(annual_charge).replace('$', '').replace(',', '').strip()
+                annual_value = float(annual_clean)
+                final_data['annual_charge'] = str(round(annual_value, 2))
+                print(f"Annual charge: ${annual_value}")
+            except (ValueError, AttributeError):
+                print("ANNUAL_CHARGE_PARSE_ERROR")
+                final_data['annual_charge'] = ''
+        else:
+            # If no annual charge provided, calculate from monthly
+            if final_data.get('monthly_charge'):
+                try:
+                    monthly_val = float(final_data['monthly_charge'])
+                    annual_calculated = monthly_val * 12
+                    final_data['annual_charge'] = str(round(annual_calculated, 2))
+                    print(f"Calculated annual charge from monthly: ${annual_calculated}")
+                except:
+                    final_data['annual_charge'] = ''
+            else:
+                final_data['annual_charge'] = ''
+        
         return final_data
         
     except Exception as e:

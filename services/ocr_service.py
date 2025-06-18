@@ -24,7 +24,10 @@ def process_utility_bill(file_path, service_account_info):
                 'account_number': '1234567890',
                 'poid': 'POI12345',
                 'monthly_usage': '1500',
-                'annual_usage': '18000'
+                'annual_usage': '18000',
+                'service_address': '456 Test Service Lane, Buffalo, NY 14201',
+                'monthly_charge': '175.89',
+                'annual_charge': '2110.68'
             }
         
         print(f"🔍 DEBUG: Processing REAL file - starting Google Vision OCR...")
@@ -53,7 +56,10 @@ def process_utility_bill(file_path, service_account_info):
                 'account_number': '',
                 'poid': '',
                 'monthly_usage': '',
-                'annual_usage': ''
+                'annual_usage': '',
+                'service_address': '',
+                'monthly_charge': '',
+                'annual_charge': ''
             }
         
         print(f"🔍 DEBUG: Sending text to LLM parser...")
