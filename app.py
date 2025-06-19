@@ -1042,6 +1042,11 @@ def process_submission_background(session_id, form_data, file_path):
         poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
         agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
         
+        # Generate Terms & Conditions (Agency Agreement) with signature
+        from services.pdf_template_processor import PDFTemplateProcessor
+        pdf_processor = PDFTemplateProcessor("GreenWatt-documents")
+        agency_agreement_pdf_path = pdf_processor.process_agency_agreement(form_data, timestamp)
+        
         # Cloud Storage
         update_progress(session_id, 5, "Cloud Storage", "Saving to Google Drive")
         drive_folder_id = drive_service.create_folder(folder_name)
@@ -1050,10 +1055,16 @@ def process_submission_background(session_id, form_data, file_path):
         poa_id = drive_service.upload_file(poa_pdf_path, f"poa_{timestamp}.pdf", drive_folder_id)
         agreement_id = drive_service.upload_file(agreement_pdf_path, f"agreement_{timestamp}.pdf", drive_folder_id)
         
+        # Upload Terms & Conditions (Agency Agreement) if generated successfully
+        agency_agreement_id = None
+        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
+            agency_agreement_id = drive_service.upload_file(agency_agreement_pdf_path, f"agency_agreement_{timestamp}.pdf", drive_folder_id)
+        
         # Generate public links
         utility_bill_link = drive_service.get_file_link(utility_bill_id)
         poa_link = drive_service.get_file_link(poa_id)
         agreement_link = drive_service.get_file_link(agreement_id)
+        agency_agreement_link = drive_service.get_file_link(agency_agreement_id) if agency_agreement_id else ''
         
         # Logging Data
         update_progress(session_id, 6, "Logging Data", "Recording submission details")
@@ -1143,7 +1154,8 @@ def process_submission_background(session_id, form_data, file_path):
             'documents': {
                 'utility_bill': utility_bill_link,
                 'poa': poa_link,
-                'agreement': agreement_link
+                'agreement': agreement_link,
+                'agency_agreement': agency_agreement_link
             }
         }
         
@@ -1151,6 +1163,8 @@ def process_submission_background(session_id, form_data, file_path):
         os.remove(file_path)
         os.remove(poa_pdf_path)
         os.remove(agreement_pdf_path)
+        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
+            os.remove(agency_agreement_pdf_path)
         
         # Complete successfully
         complete_progress(session_id, success=True)
@@ -1233,7 +1247,7 @@ def test_sendgrid_email_verification():
         <head><title>SendGrid Email Verification Test</title></head>
         <body style="font-family: Arial; padding: 20px;">
             <h2>📧 SendGrid Email Verification Test</h2>
-            <p>This will send a test email to both <strong>greenwatt.intake@gmail.com</strong> and <strong>pat@persimmons.studio</strong></p>
+            <p>This will send a test email to <strong>greenwatt.intake@gmail.com</strong></p>
             
             <form method="POST">
                 <div style="margin: 10px 0;">
@@ -1285,12 +1299,11 @@ def test_sendgrid_email_verification():
             <html>
             <body style="font-family: Arial; padding: 20px;">
                 <h2>✅ Email Verification Test Successful!</h2>
-                <p><strong>TEST EMAIL SENT TO BOTH RECIPIENTS!</strong></p>
+                <p><strong>TEST EMAIL SENT SUCCESSFULLY!</strong></p>
                 <div style="background: #f0f8f0; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <h3>📧 Email Details:</h3>
                     <strong>Recipients:</strong><br>
-                    • greenwatt.intake@gmail.com<br>
-                    • pat@persimmons.studio<br><br>
+                    • greenwatt.intake@gmail.com<br><br>
                     
                     <strong>Test Data Sent:</strong><br>
                     • Agent Name: {agent_name}<br>

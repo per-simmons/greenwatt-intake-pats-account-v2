@@ -25,8 +25,7 @@ def send_notification_email(agent_name, customer_name, utility, signed_date, ann
         
         # Email recipients - internal team members
         internal_emails = [
-            "greenwatt.intake@gmail.com",  # Primary intake email
-            "pat@persimmons.studio"        # Pat's email for testing
+            "greenwatt.intake@gmail.com"   # Primary intake email
         ]
         
         # Professional HTML email template with GreenWatt branding
