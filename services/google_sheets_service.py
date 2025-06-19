@@ -18,8 +18,6 @@ class GoogleSheetsService:
         # Column indexes for formatting (0-based) - Updated for POID (OCR) and Service Address (OCR) columns
         self.MONTHLY_USAGE_COL = 16   # Column Q - kWh format (+1 for new POID (OCR) column)
         self.ANNUAL_USAGE_COL = 17    # Column R - kWh format (+1 for new POID (OCR) column)
-        self.MONTHLY_CHARGE_COL = 25  # Column Z - currency format (+2 for new POID (OCR) and Service Address (OCR) columns)
-        self.ANNUAL_CHARGE_COL = 26   # Column AA - currency format (+2 for new POID (OCR) and Service Address (OCR) columns)
         
     def create_headers_if_needed(self):
         headers = [
@@ -48,14 +46,13 @@ class GoogleSheetsService:
             'Utility Bill Link',
             'POA Link',
             'Agreement Link',
-            'Monthly Charge (OCR)',
-            'Annual Charge (OCR)'
+            'Terms & Conditions Link'
         ]
         
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:AA1'
+                range='A1:Z1'
             ).execute()
             
             existing_values = result.get('values', [])
@@ -67,7 +64,7 @@ class GoogleSheetsService:
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range='A1:AA1',
+                    range='A1:Z1',
                     valueInputOption='RAW',
                     body=body
                 ).execute()
@@ -122,7 +119,7 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:AA',
+                range='A:Z',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
@@ -131,9 +128,9 @@ class GoogleSheetsService:
             # Format the newly added row
             if 'updates' in result and 'updatedRange' in result['updates']:
                 updated_range = result['updates']['updatedRange']
-                # Extract row number from range like "Sheet1!A2:AA2"
+                # Extract row number from range like "Sheet1!A2:Z2"
                 import re
-                row_match = re.search(r'!A(\d+):AA\d+', updated_range)
+                row_match = re.search(r'!A(\d+):Z\d+', updated_range)
                 if row_match:
                     row_number = int(row_match.group(1))
                     
@@ -145,12 +142,6 @@ class GoogleSheetsService:
                         self._format_kwh_column(row_number, self.MONTHLY_USAGE_COL)
                     if len(data) > self.ANNUAL_USAGE_COL and data[self.ANNUAL_USAGE_COL]:
                         self._format_kwh_column(row_number, self.ANNUAL_USAGE_COL)
-                    
-                    # Apply currency formatting to charge columns if they have values
-                    if len(data) > self.MONTHLY_CHARGE_COL and data[self.MONTHLY_CHARGE_COL]:
-                        self._format_currency_column(row_number, self.MONTHLY_CHARGE_COL)
-                    if len(data) > self.ANNUAL_CHARGE_COL and data[self.ANNUAL_CHARGE_COL]:
-                        self._format_currency_column(row_number, self.ANNUAL_CHARGE_COL)
             
             return result
         except Exception as e:
@@ -259,7 +250,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:AA'
+                range='A:Z'
             ).execute()
             
             return result.get('values', [])

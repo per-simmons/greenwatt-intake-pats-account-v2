@@ -52,8 +52,6 @@ account_number    – String
 poid              – String (may be empty)
 monthly_usage_kwh – Integer (no commas)
 service_address   – String (may be empty)
-monthly_charge    – Number (may be empty)
-annual_charge     – Number (may be empty)
   
 Rules:
 • Utility name: Look for these exact company names or their websites in the text:
@@ -96,16 +94,6 @@ Rules:
   - Usually appears after "Service Address:", "Service Location:", or "Property Address:"
   - Extract full address including street, city, state, zip
   - Different from billing/mailing address - this is where electricity is delivered
-
-• monthly_charge = Total monthly electricity charge in dollars:
-  - Look for "Total Amount Due", "Current Charges", "Amount Due This Month"
-  - Extract dollar amount for electricity service (excluding taxes/fees if possible)
-  - Return as number without dollar sign or commas (e.g., 125.67)
-
-• annual_charge = Estimated annual electricity cost:
-  - Calculate from monthly charge × 12 if only monthly available
-  - Look for "Annual Cost", "Yearly Total", or similar if explicitly stated
-  - Return as number without dollar sign or commas
 
 If a field isn't present, return an empty string (or 0 for numbers).
 Respond with JSON ONLY, no commentary.
@@ -198,46 +186,6 @@ Text to parse:
         
         # Service address
         final_data['service_address'] = parsed_data.get('service_address', '')
-        
-        # Monthly charge
-        monthly_charge = parsed_data.get('monthly_charge', '')
-        if monthly_charge:
-            try:
-                # Clean and convert monthly charge
-                charge_clean = str(monthly_charge).replace('$', '').replace(',', '').strip()
-                charge_value = float(charge_clean)
-                final_data['monthly_charge'] = str(round(charge_value, 2))
-                print(f"Monthly charge: ${charge_value}")
-            except (ValueError, AttributeError):
-                print("MONTHLY_CHARGE_PARSE_ERROR")
-                final_data['monthly_charge'] = ''
-        else:
-            final_data['monthly_charge'] = ''
-        
-        # Annual charge
-        annual_charge = parsed_data.get('annual_charge', '')
-        if annual_charge:
-            try:
-                # Clean and convert annual charge
-                annual_clean = str(annual_charge).replace('$', '').replace(',', '').strip()
-                annual_value = float(annual_clean)
-                final_data['annual_charge'] = str(round(annual_value, 2))
-                print(f"Annual charge: ${annual_value}")
-            except (ValueError, AttributeError):
-                print("ANNUAL_CHARGE_PARSE_ERROR")
-                final_data['annual_charge'] = ''
-        else:
-            # If no annual charge provided, calculate from monthly
-            if final_data.get('monthly_charge'):
-                try:
-                    monthly_val = float(final_data['monthly_charge'])
-                    annual_calculated = monthly_val * 12
-                    final_data['annual_charge'] = str(round(annual_calculated, 2))
-                    print(f"Calculated annual charge from monthly: ${annual_calculated}")
-                except:
-                    final_data['annual_charge'] = ''
-            else:
-                final_data['annual_charge'] = ''
         
         return final_data
         

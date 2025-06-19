@@ -1090,8 +1090,7 @@ def process_submission_background(session_id, form_data, file_path):
             utility_bill_link,              # Utility Bill Link (W)
             poa_link,                        # POA Link (X)
             agreement_link,                  # Agreement Link (Y)
-            ocr_data.get('monthly_charge', ''),   # Monthly Charge (OCR) (Z) - NEW
-            ocr_data.get('annual_charge', '')     # Annual Charge (OCR) (AA) - NEW
+            agency_agreement_link              # Terms & Conditions Link (Z) - NEW
         ]
         
         try:

@@ -281,7 +281,7 @@ class PDFTemplateProcessor:
             raise
     
     def process_agency_agreement(self, form_data, timestamp):
-        """Process the agency agreement template"""
+        """Process the agency agreement template with signature and date on page 4"""
         template_path = os.path.join(self.templates_folder, "GreenWATT-USA-Inc-Communtiy-Solar-Agency-Agreement.pdf")
         output_path = f"temp/Agency_{timestamp}.pdf"
         
@@ -299,8 +299,27 @@ class PDFTemplateProcessor:
                 page_width = float(page.mediabox.width)
                 page_height = float(page.mediabox.height)
                 
-                # Add electronic signature format: "[USER NAME] BY GreenWATT USA Inc. (LOA)"
-                if page_num == len(reader.pages) - 1:  # Last page signature
+                # Add signature and date on page 4 (0-indexed page 3)
+                if page_num == 3:  # Page 4 
+                    # Find white space area for signature (adjust coordinates as needed)
+                    # Add customer signature in italic style
+                    signature_overlay = self._create_signature_overlay(
+                        form_data['contact_name'], 
+                        100, 300,  # x, y coordinates - adjust based on available white space
+                        page_width, page_height
+                    )
+                    page.merge_page(signature_overlay.pages[0])
+                    
+                    # Add date stamp next to signature
+                    date_overlay = self._create_text_overlay(
+                        datetime.now().strftime('%m/%d/%Y'), 
+                        300, 300,  # x, y coordinates - next to signature
+                        page_width, page_height, 10
+                    )
+                    page.merge_page(date_overlay.pages[0])
+                
+                # Keep original last page signature as well for completeness
+                elif page_num == len(reader.pages) - 1:  # Last page signature
                     electronic_signature = f"{form_data['contact_name']} BY GreenWATT USA Inc. (LOA)"
                     signature_overlay = self._create_text_overlay(
                         electronic_signature, 
