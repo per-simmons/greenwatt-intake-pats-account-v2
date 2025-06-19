@@ -150,6 +150,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateProgressUI(progress) {
         const progressFill = document.getElementById('progressFill');
         const progressPercent = document.getElementById('progressPercent');
+        const progressStep = document.getElementById('progressStep');
+        const progressDescription = document.getElementById('progressDescription');
         
         // Update progress bar
         if (progressFill && progress.progress !== undefined) {
@@ -159,6 +161,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update percentage text
         if (progressPercent && progress.progress !== undefined) {
             progressPercent.textContent = `${Math.round(progress.progress)}%`;
+        }
+        
+        // Update step name and description
+        if (progressStep && progress.step_name) {
+            progressStep.textContent = progress.step_name;
+        }
+        
+        if (progressDescription && progress.description) {
+            progressDescription.textContent = progress.description;
         }
     }
     

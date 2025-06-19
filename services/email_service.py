@@ -75,7 +75,7 @@ def send_notification_email(agent_name, customer_name, utility, signed_date, ann
                         </div>
                         <div class="info-row">
                             <div class="label">Annual Usage</div>
-                            <div class="value">{annual_usage:,} kWh/year</div>
+                            <div class="value">{int(annual_usage):,} kWh/year</div>
                         </div>
                     </div>
                 </div>
@@ -97,7 +97,7 @@ def send_notification_email(agent_name, customer_name, utility, signed_date, ann
         Customer Name: {customer_name}
         Utility Provider: {utility}
         Submission Date: {signed_date}
-        Annual Usage: {annual_usage:,} kWh/year
+        Annual Usage: {int(annual_usage):,} kWh/year
         
         📊 Check the Google Sheets dashboard for complete details
         🔗 Documents automatically stored in Google Drive

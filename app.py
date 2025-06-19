@@ -1102,51 +1102,77 @@ def test_pixel_perfect_full():
 def process_submission_background(session_id, form_data, file_path):
     """Background processing function with progress tracking"""
     try:
-        update_progress(session_id, 1, "Uploading Document", "Saving your utility bill securely")
+        # Step 1: Uploading Document (5-20%)
+        update_progress(session_id, 1, "Uploading Document", "Saving your utility bill securely", 5)
+        time.sleep(0.2)  # Simulate upload
+        update_progress(session_id, 1, "Uploading Document", "Validating file format", 15)
+        time.sleep(0.3)
+        update_progress(session_id, 1, "Uploading Document", "File saved successfully", 20)
         
-        # OCR Processing
-        update_progress(session_id, 2, "OCR Analysis", "Reading text from your utility bill")
+        # Step 2: OCR Processing (20-35%)
+        update_progress(session_id, 2, "OCR Analysis", "Initializing text recognition", 25)
+        time.sleep(0.2)
+        update_progress(session_id, 2, "OCR Analysis", "Reading text from your utility bill", 30)
         ocr_data = process_utility_bill(file_path, SERVICE_ACCOUNT_INFO)
+        update_progress(session_id, 2, "OCR Analysis", "Text extraction complete", 35)
         
-        # AI Processing
-        update_progress(session_id, 3, "AI Processing", "Extracting account information")
-        time.sleep(0.5)  # Allow progress update to be visible
+        # Step 3: AI Processing (35-50%)
+        update_progress(session_id, 3, "AI Processing", "Analyzing document structure", 40)
+        time.sleep(0.3)
+        update_progress(session_id, 3, "AI Processing", "Extracting account information", 45)
+        time.sleep(0.4)
+        update_progress(session_id, 3, "AI Processing", "Validating extracted data", 50)
         
         submission_date = datetime.now()
         folder_name = f"{submission_date.strftime('%Y-%m-%d')}_{form_data['account_name']}_{form_data['utility_provider']}"
         
-        # Generate Documents
-        update_progress(session_id, 4, "Generating Documents", "Creating your POA and agreement")
+        # Step 4: Generate Documents (50-70%)
+        update_progress(session_id, 4, "Generating Documents", "Preparing document templates", 55)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        update_progress(session_id, 4, "Generating Documents", "Creating Power of Attorney", 60)
         poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
+        
+        update_progress(session_id, 4, "Generating Documents", "Creating Community Solar Agreement", 65)
         agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
         
         # Generate Terms & Conditions (Agency Agreement) with signature
+        update_progress(session_id, 4, "Generating Documents", "Creating Terms & Conditions", 68)
         from services.pdf_template_processor import PDFTemplateProcessor
         pdf_processor = PDFTemplateProcessor("GreenWatt-documents")
         agency_agreement_pdf_path = pdf_processor.process_agency_agreement(form_data, timestamp)
+        update_progress(session_id, 4, "Generating Documents", "All documents created", 70)
         
-        # Cloud Storage
-        update_progress(session_id, 5, "Cloud Storage", "Saving to Google Drive")
+        # Step 5: Cloud Storage (70-85%)
+        update_progress(session_id, 5, "Cloud Storage", "Connecting to Google Drive", 72)
+        time.sleep(0.2)
+        update_progress(session_id, 5, "Cloud Storage", "Creating secure folder", 75)
         drive_folder_id = drive_service.create_folder(folder_name)
         
+        update_progress(session_id, 5, "Cloud Storage", "Uploading utility bill", 78)
         utility_bill_id = drive_service.upload_file(file_path, f"utility_bill_{timestamp}.pdf", drive_folder_id)
+        
+        update_progress(session_id, 5, "Cloud Storage", "Uploading Power of Attorney", 80)
         poa_id = drive_service.upload_file(poa_pdf_path, f"poa_{timestamp}.pdf", drive_folder_id)
+        
+        update_progress(session_id, 5, "Cloud Storage", "Uploading Agreement", 82)
         agreement_id = drive_service.upload_file(agreement_pdf_path, f"agreement_{timestamp}.pdf", drive_folder_id)
         
         # Upload Terms & Conditions (Agency Agreement) if generated successfully
         agency_agreement_id = None
         if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
+            update_progress(session_id, 5, "Cloud Storage", "Uploading Terms & Conditions", 84)
             agency_agreement_id = drive_service.upload_file(agency_agreement_pdf_path, f"agency_agreement_{timestamp}.pdf", drive_folder_id)
         
         # Generate public links
+        update_progress(session_id, 5, "Cloud Storage", "Generating secure links", 85)
         utility_bill_link = drive_service.get_file_link(utility_bill_id)
         poa_link = drive_service.get_file_link(poa_id)
         agreement_link = drive_service.get_file_link(agreement_id)
         agency_agreement_link = drive_service.get_file_link(agency_agreement_id) if agency_agreement_id else ''
         
-        # Logging Data
-        update_progress(session_id, 6, "Logging Data", "Recording submission details")
+        # Step 6: Logging Data (85-95%)
+        update_progress(session_id, 6, "Logging Data", "Preparing submission data", 87)
         
         # Get agent name and other data
         agent_name = sheets_service.get_agent_name(form_data['agent_id'])
@@ -1183,15 +1209,19 @@ def process_submission_background(session_id, form_data, file_path):
             agency_agreement_link              # Terms & Conditions Link (Z) - NEW
         ]
         
+        update_progress(session_id, 6, "Logging Data", "Writing to Google Sheets", 90)
         try:
             result = sheets_service.append_row(sheet_data)
         except Exception as e:
             print(f"Sheet insertion failed: {e}")
         
-        # Notifications
-        update_progress(session_id, 7, "Notifications", "Sending confirmations")
+        update_progress(session_id, 6, "Logging Data", "Data saved successfully", 95)
+        
+        # Step 7: Notifications (95-100%)
+        update_progress(session_id, 7, "Notifications", "Preparing email notification", 96)
         
         # Send email notification to internal team
+        update_progress(session_id, 7, "Notifications", "Sending email notification", 97)
         from services.email_service import send_notification_email
         send_notification_email(
             agent_name=agent_name,
@@ -1202,6 +1232,7 @@ def process_submission_background(session_id, form_data, file_path):
         )
         
         # Send SMS verification to customer
+        update_progress(session_id, 7, "Notifications", "Sending SMS verification", 98)
         try:
             sms_response = sms_service.send_customer_verification_sms(
                 customer_phone=form_data['phone'],
@@ -1212,6 +1243,7 @@ def process_submission_background(session_id, form_data, file_path):
             print(f"SMS failed: {sms_error}")
             
         # Send SMS notification to internal team
+        update_progress(session_id, 7, "Notifications", "Notifying team", 99)
         try:
             internal_sms_data = {
                 'customer_name': form_data['account_name'],

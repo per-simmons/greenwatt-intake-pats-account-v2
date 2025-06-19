@@ -380,6 +380,23 @@ small {
     font-size: 16px;
 }
 
+/* Progress Details */
+.progress-details {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.progress-step {
+    font-weight: 600;
+    color: #2c5530;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.progress-description {
+    color: #666;
+    font-size: 14px;
+}
 
 .result {
     margin-top: 30px;

@@ -49,12 +49,28 @@ class PDFTemplateProcessor:
         return f"POA-{today}-{self.poa_counter:03d}"
     
     def _create_signature_overlay(self, signature_text, x, y, page_width, page_height):
-        """Create a PDF overlay with signature text in italic style"""
+        """Create a PDF overlay with signature text in Arizonia cursive style"""
         packet = BytesIO()
         can = canvas.Canvas(packet, pagesize=(page_width, page_height))
         
-        # Use italic font for signature
-        can.setFont("Helvetica-Oblique", 12)
+        try:
+            # Try to use Arizonia font
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            
+            # Register Arizonia font if not already registered
+            if "Arizonia" not in pdfmetrics.getRegisteredFontNames():
+                font_path = "Arizonia/Arizonia-Regular.ttf"
+                if os.path.exists(font_path):
+                    pdfmetrics.registerFont(TTFont("Arizonia", font_path))
+            
+            # Use Arizonia font with larger size for signature
+            can.setFont("Arizonia", 22)
+        except Exception as e:
+            print(f"Warning: Could not load Arizonia font: {e}")
+            # Fallback to italic font
+            can.setFont("Helvetica-Oblique", 12)
+        
         can.drawString(x, y, signature_text)
         
         can.save()
