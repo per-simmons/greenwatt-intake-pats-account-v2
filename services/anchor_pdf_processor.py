@@ -14,6 +14,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
+import importlib
+from . import anchor_mappings
 from .anchor_mappings import get_anchor_config, get_signature_font_config
 
 
@@ -341,6 +343,10 @@ class AnchorPDFProcessor:
         Returns:
             tuple: (output_path, poa_id) if POA, or just output_path for agreements
         """
+        # Force reload anchor mappings to pick up any changes
+        importlib.reload(anchor_mappings)
+        print("🔄 Reloaded anchor mappings")
+        
         template_path = os.path.join(self.templates_folder, template_filename)
         
         if not os.path.exists(template_path):
@@ -396,15 +402,24 @@ class AnchorPDFProcessor:
                 context = anchor_info.get("context")
                 context_preference = anchor_info.get("context_preference")
                 
+                # DEBUG: Show actual dy values for distribution utility fields
+                if "distribution_utility" in field_name:
+                    print(f"🔍 DEBUG: {field_name} using dy={dy} from anchor_config")
+                    print(f"🔍 DEBUG: anchor_info = {anchor_info}")
+                
                 # Find anchor coordinates across all pages
                 result = self.find_anchor_across_pages(template_path, anchor_text, context, context_preference)
                 if not result:
-                    print(f"Warning: Could not find anchor '{anchor_text}' anywhere in {template_filename}")
+                    print(f"❌ ERROR: Could not find anchor '{anchor_text}' anywhere in {template_filename}")
+                    if "distribution_utility" in field_name:
+                        print(f"❌ CRITICAL: Distribution Utility field '{field_name}' cannot be placed - anchor '{anchor_text}' not found!")
                     continue
                 
                 page_num, x, y = result
                 final_x = x + dx
                 final_y = y + dy
+                
+                # Apply configured offsets - no emergency override needed
                 
                 print(f"✅ Found '{anchor_text}' on page {page_num + 1} at ({x:.1f}, {y:.1f}) -> placing at ({final_x:.1f}, {final_y:.1f})")
             
@@ -471,6 +486,20 @@ class AnchorPDFProcessor:
                 text_value = form_data.get('phone', '')
             elif field_name == "customer_info_email":
                 text_value = form_data.get('email', '')
+            
+            # Mass Market Distribution Utility Fields
+            elif field_name == "distribution_utility_name":
+                # Use OCR utility name if available, fallback to form selection
+                text_value = ocr_data.get('utility_name', '') or form_data.get('utility_provider', '')
+                print(f"🔍 DEBUG: distribution_utility_name = '{text_value}'")
+            elif field_name == "distribution_utility_account":
+                # Use OCR account number if available
+                text_value = ocr_data.get('account_number', '')
+                print(f"🔍 DEBUG: distribution_utility_account = '{text_value}'")
+            elif field_name == "distribution_utility_poid":
+                # Use OCR POID if available, fallback to form POID
+                text_value = ocr_data.get('poid', '') or form_data.get('poid', '')
+                print(f"🔍 DEBUG: distribution_utility_poid = '{text_value}'")
             
             # Meadow Commercial UCB Agreement - Page 2 Header Fields
             elif field_name == "effective_date":

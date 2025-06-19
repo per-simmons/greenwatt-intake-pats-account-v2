@@ -181,6 +181,26 @@ MASS_MARKET_ANCHORS = {
         "font_size": 10
     },
     
+    # Page 1: Distribution Utility Section (below Customer Information)
+    "distribution_utility_name": {
+        "anchor": "Distribution",
+        "dx": 150,  # Move to the right into the data area  
+        "dy": 5,    # Much higher - just below the header
+        "font_size": 10
+    },
+    "distribution_utility_account": {
+        "anchor": "Distribution", 
+        "dx": 150,  # Move to the right into the data area
+        "dy": 20,   # Second row below utility name
+        "font_size": 10
+    },
+    "distribution_utility_poid": {
+        "anchor": "Distribution",
+        "dx": 350,  # Further right for POID placement
+        "dy": 20,   # Same row as account number
+        "font_size": 10
+    },
+    
     # Page 2: Signature Section
     "customer_signature": {
         "anchor": "Signature of Subscriber:",

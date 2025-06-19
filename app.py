@@ -933,6 +933,85 @@ def test_pixel_perfect_agreement():
             'traceback': traceback.format_exc()
         }), 500
 
+@app.route('/test-mass-market-agreement', methods=['POST'])
+def test_mass_market_agreement():
+    """Test Mass Market Agreement Distribution Utility field placement"""
+    try:
+        # Get JSON data
+        json_data = request.get_json()
+        
+        form_data = {
+            'business_entity': 'Mass Market Test Business',
+            'account_name': 'Mass Market Test Account',
+            'contact_name': json_data.get('contact_name', 'Test Customer'),
+            'title': json_data.get('title', 'Owner'),
+            'phone': '555-123-4567',
+            'email': json_data.get('email', 'test@example.com'),
+            'service_addresses': '123 Test Street, Test City, NY 12345',
+            'developer_assigned': json_data.get('developer_assigned', 'Meadow Energy'),
+            'account_type': 'Mass Market',
+            'utility_provider': json_data.get('utility_provider', 'RG&E'),
+            'agent_id': 'TEST001',
+            'poid': 'R010000527370112'
+        }
+        
+        # Create OCR data with the values from your screenshot
+        ocr_data = {
+            'utility_name': json_data.get('utility_provider', 'RG&E'),
+            'customer_name': json_data.get('contact_name', 'Debug Distribution'),
+            'account_number': '20027379153',
+            'poid': 'R010000527370112',
+            'monthly_usage': '1500',
+            'annual_usage': '18000',
+            'service_address': '123 Test Street, Test City, NY 12345',
+            'monthly_charge': '165.25',
+            'annual_charge': '1983.00'
+        }
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Directly process Mass Market template
+        from services.anchor_pdf_processor import AnchorPDFProcessor
+        processor = AnchorPDFProcessor("GreenWatt-documents")
+        
+        mass_market_template = "Form-Subscription-Agreement-Mass Market UCB-Meadow-January 2023-002.pdf"
+        output_path = processor.process_template_with_anchors(mass_market_template, form_data, ocr_data, timestamp)
+        
+        # Get file info
+        file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
+        
+        # Create sample file
+        sample_filename = f"temp/MASS_MARKET_Test_{timestamp}.pdf"
+        if os.path.exists(output_path):
+            import shutil
+            shutil.copy2(output_path, sample_filename)
+            os.remove(output_path)  # Remove original, keep sample
+        
+        response_data = {
+            'success': True,
+            'test_type': 'Mass Market Distribution Utility Test',
+            'template_used': mass_market_template,
+            'utility': form_data['utility_provider'],
+            'developer': form_data['developer_assigned'],
+            'account_type': form_data['account_type'],
+            'distribution_utility_name': ocr_data['utility_name'],
+            'distribution_utility_account': ocr_data['account_number'],
+            'distribution_utility_poid': ocr_data['poid'],
+            'anchor_method': 'Distribution anchor with positive offsets',
+            'file_size': file_size,
+            'sample_file': sample_filename
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 @app.route('/test-pixel-perfect-full', methods=['POST'])
 def test_pixel_perfect_full():
     """Full end-to-end test with pixel-perfect signatures and Google Drive upload"""
