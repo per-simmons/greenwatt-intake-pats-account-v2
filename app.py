@@ -6,6 +6,7 @@ import uuid
 import threading
 import time
 from datetime import datetime
+import pytz
 from werkzeug.utils import secure_filename
 from services.ocr_service import process_utility_bill
 from services.pdf_generator import generate_poa_pdf, generate_agreement_pdf
@@ -617,7 +618,9 @@ def test_end_to_end():
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        submission_date = datetime.now()
+        # Get submission date in EST timezone
+        est = pytz.timezone('US/Eastern')
+        submission_date = datetime.now(est)
         
         # Step 1: Generate PDFs using template processor
         poa_pdf_path = generate_poa_pdf(test_form_data, test_ocr_data, timestamp)
@@ -1046,7 +1049,9 @@ def test_pixel_perfect_full():
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        submission_date = datetime.now()
+        # Get submission date in EST timezone
+        est = pytz.timezone('US/Eastern')
+        submission_date = datetime.now(est)
         
         # Generate PDFs using pixel-perfect anchor processor
         poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
@@ -1123,7 +1128,9 @@ def process_submission_background(session_id, form_data, file_path):
         time.sleep(0.4)
         update_progress(session_id, 3, "AI Processing", "Validating extracted data", 50)
         
-        submission_date = datetime.now()
+        # Get submission date in EST timezone
+        est = pytz.timezone('US/Eastern')
+        submission_date = datetime.now(est)
         folder_name = f"{submission_date.strftime('%Y-%m-%d')}_{form_data['account_name']}_{form_data['utility_provider']}"
         
         # Step 4: Generate Documents (50-70%)
@@ -1182,7 +1189,7 @@ def process_submission_background(session_id, form_data, file_path):
         
         sheet_data = [
             unique_id,                       # Unique submission ID (A)
-            submission_date.strftime('%Y-%m-%d %H:%M:%S'),  # Submission Date (B)
+            submission_date.strftime('%m/%d/%Y %I:%M %p EST'),  # Submission Date (B) - MM/DD/YYYY 12hr EST
             form_data['business_entity'],    # Business Entity Name (C)
             form_data['account_name'],       # Account Name (D)
             form_data['contact_name'],       # Contact Name (E)
