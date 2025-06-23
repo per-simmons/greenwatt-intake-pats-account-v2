@@ -1937,8 +1937,8 @@ def dynamic_test():
             
             <h3>🔧 Testing Tools</h3>
             <div style="margin: 20px 0;">
-                <a href="/dynamic-clear-cache" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
-                    🗑️ Clear Cache (Test Changes Immediately)
+                <a href="/dynamic-cache-manager" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
+                    🗂️ Cache Manager (Test Changes Immediately)
                 </a>
                 <a href="/dynamic-test" style="display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
                     🔄 Refresh This Test
@@ -1973,9 +1973,78 @@ def dynamic_test():
         </html>
         ''', 500
 
-@app.route('/dynamic-clear-cache')
-def dynamic_clear_cache():
-    """Clear dynamic Google Sheets cache for immediate testing"""
+@app.route('/dynamic-cache-manager')
+def dynamic_cache_manager():
+    """Cache management page - view current cache without clearing"""
+    try:
+        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+        if not dynamic_sheets_id:
+            return "Dynamic sheets not configured", 500
+        
+        # Create dynamic sheets service (don't clear cache yet)
+        dynamic_sheets_service = GoogleSheetsService(
+            SERVICE_ACCOUNT_INFO,
+            dynamic_sheets_id,
+            os.getenv('GOOGLE_AGENT_SHEETS_ID')
+        )
+        
+        # Get current cached data
+        utilities = dynamic_sheets_service.get_active_utilities()
+        developers = dynamic_sheets_service.get_active_developers()
+        
+        return f'''
+        <html>
+        <head><title>Dynamic Cache Manager</title></head>
+        <body style="font-family: Arial; padding: 20px;">
+            <h2>🗂️ Dynamic Cache Manager</h2>
+            <p>View and manage the Google Sheets cache for immediate testing</p>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3>📊 Current Cached Data</h3>
+                <h4>Active Utilities:</h4>
+                <ul>
+                    {(''.join([f'<li><strong>{utility}</strong></li>' for utility in utilities]) if utilities else '<li><em>No utilities found</em></li>')}
+                </ul>
+                
+                <h4>Active Developers:</h4>
+                <ul>
+                    {(''.join([f'<li><strong>{developer}</strong></li>' for developer in developers]) if developers else '<li><em>No developers found</em></li>')}
+                </ul>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h4>⏰ Cache Behavior</h4>
+                <p>• Cache automatically refreshes every <strong>15 minutes</strong></p>
+                <p>• Use the button below to get immediate updates from Google Sheets</p>
+                <p>• This is useful when testing changes to utilities or developers</p>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <a href="/dynamic-clear-cache-now" 
+                   style="display: inline-block; padding: 15px 25px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    🗑️ Clear Cache Now
+                </a>
+                
+                <a href="/dynamic-test" 
+                   style="display: inline-block; padding: 15px 25px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                    ← Back to Test Dashboard
+                </a>
+                
+                <a href="/" 
+                   style="display: inline-block; padding: 15px 25px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                    🧪 Test Main Form
+                </a>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f"Error accessing cache manager: {str(e)}", 500
+
+@app.route('/dynamic-clear-cache-now')
+def dynamic_clear_cache_now():
+    """Actually clear the cache and show results"""
     try:
         dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
         if not dynamic_sheets_id:
@@ -1990,30 +2059,45 @@ def dynamic_clear_cache():
         
         dynamic_sheets_service.clear_cache()
         
-        # Get fresh data
+        # Get fresh data after clearing
         utilities = dynamic_sheets_service.get_active_utilities()
         developers = dynamic_sheets_service.get_active_developers()
         
         return f'''
         <html>
-        <head><title>Dynamic Cache Cleared</title></head>
+        <head><title>Cache Cleared Successfully</title></head>
         <body style="font-family: Arial; padding: 20px;">
-            <h2>🗑️ Dynamic Cache Cleared Successfully!</h2>
-            <p><strong>✅ Cache cleared - changes from Google Sheets are now active</strong></p>
+            <h2>✅ Cache Cleared Successfully!</h2>
+            <p><strong>Fresh data has been loaded from Google Sheets</strong></p>
             
-            <h3>Fresh Data Retrieved:</h3>
-            <ul>
-                <li><strong>Active Utilities:</strong> {', '.join(utilities) if utilities else 'None found'}</li>
-                <li><strong>Active Developers:</strong> {', '.join(developers) if developers else 'None found'}</li>
-            </ul>
+            <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h3>📊 Fresh Data Retrieved:</h3>
+                <h4>Active Utilities:</h4>
+                <ul>
+                    {(''.join([f'<li><strong>{utility}</strong></li>' for utility in utilities]) if utilities else '<li><em>No utilities found</em></li>')}
+                </ul>
+                
+                <h4>Active Developers:</h4>
+                <ul>
+                    {(''.join([f'<li><strong>{developer}</strong></li>' for developer in developers]) if developers else '<li><em>No developers found</em></li>')}
+                </ul>
+            </div>
             
-            <p><strong>You can now test changes immediately without waiting 15 minutes!</strong></p>
+            <div style="background: #cff4fc; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <h4>🎯 Next Steps</h4>
+                <p>• Changes from Google Sheets are now active</p>
+                <p>• Test the main form to see updated dropdowns</p>
+                <p>• No need to wait 15 minutes for cache refresh</p>
+            </div>
             
             <div style="margin: 20px 0;">
-                <a href="/dynamic-test" style="display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">
-                    ← Back to Dynamic Test Dashboard
+                <a href="/dynamic-cache-manager" 
+                   style="display: inline-block; padding: 15px 25px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px;">
+                    ← Back to Cache Manager
                 </a>
-                <a href="/" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                
+                <a href="/" 
+                   style="display: inline-block; padding: 15px 25px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
                     🧪 Test Main Form
                 </a>
             </div>
@@ -2023,6 +2107,24 @@ def dynamic_clear_cache():
         
     except Exception as e:
         return f"Error clearing cache: {str(e)}", 500
+
+# Keep the old route for backwards compatibility
+@app.route('/dynamic-clear-cache')
+def dynamic_clear_cache():
+    """Redirect to the new cache manager"""
+    return '''
+    <html>
+    <head>
+        <title>Redirecting to Cache Manager</title>
+        <meta http-equiv="refresh" content="2;url=/dynamic-cache-manager">
+    </head>
+    <body style="font-family: Arial; padding: 20px; text-align: center;">
+        <h2>🔄 Redirecting to Cache Manager</h2>
+        <p>Taking you to the improved cache management interface...</p>
+        <p><a href="/dynamic-cache-manager">Click here if not redirected automatically</a></p>
+    </body>
+    </html>
+    '''
 
 @app.route('/test-sendgrid-email-verification', methods=['GET', 'POST'])
 def test_sendgrid_email_verification():
