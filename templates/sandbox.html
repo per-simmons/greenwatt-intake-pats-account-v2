@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenWatt Sandbox - Dynamic Sheets Testing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .sandbox-banner {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .sandbox-info {
+            background-color: #ffe0b2;
+            border: 2px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .dynamic-indicator {
+            background-color: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sandbox-banner">
+        🧪 SANDBOX ENVIRONMENT - FOR TESTING ONLY 🧪
+    </div>
+    
+    <div class="container">
+        <h1>GreenWatt Solar Intake Form - Sandbox</h1>
+        
+        <div class="sandbox-info">
+            <h3>Dynamic Google Sheets Integration Test</h3>
+            <p>This sandbox uses separate Google Sheets and Drive folders for testing.</p>
+            <ul>
+                <li>Utilities and Developers are loaded dynamically from Google Sheets</li>
+                <li>Changes to the sandbox sheets will appear here (15-minute cache)</li>
+                <li>POID is required for NYSEG and RG&E (keep names consistent)</li>
+                <li>All submissions go to sandbox folders only</li>
+            </ul>
+        </div>
+        
+        <form id="sandboxForm" enctype="multipart/form-data">
+            <!-- 1. Agent ID -->
+            <div class="form-group">
+                <label for="agent_id">Agent ID*</label>
+                <input type="text" id="agent_id" name="agent_id" required>
+            </div>
+            
+            <!-- 2. Legal Business Entity Name (Not Required) -->
+            <div class="form-group">
+                <label for="business_entity">Legal Business Entity Name</label>
+                <input type="text" id="business_entity" name="business_entity" placeholder="Optional - if different from Account Name">
+            </div>
+            
+            <!-- 3. Account Name (as shown on the utility bill) -->
+            <div class="form-group">
+                <label for="account_name">Account Name (as shown on the utility bill)*</label>
+                <input type="text" id="account_name" name="account_name" required>
+            </div>
+            
+            <!-- 4. Contact Full Name -->
+            <div class="form-group">
+                <label for="contact_name">Contact Full Name*</label>
+                <input type="text" id="contact_name" name="contact_name" required>
+            </div>
+            
+            <!-- 5. Contact Title -->
+            <div class="form-group">
+                <label for="title">Contact Title*</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <!-- 6. Contact Phone Number -->
+            <div class="form-group">
+                <label for="phone">Contact Phone Number*</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+            
+            <!-- 7. Contact Email Address -->
+            <div class="form-group">
+                <label for="email">Contact Email Address*</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <!-- 8. Service Address -->
+            <div class="form-group">
+                <label for="service_addresses">Service Address(es) (Comma separated if multiple)*</label>
+                <textarea id="service_addresses" name="service_addresses" rows="3" required></textarea>
+            </div>
+            
+            <!-- 9. Utility (DYNAMIC from Google Sheets) -->
+            <div class="form-group">
+                <label for="utility_provider">Utility* <span class="dynamic-indicator">DYNAMIC</span></label>
+                <select id="utility_provider" name="utility_provider" required>
+                    <option value="">Select Utility</option>
+                    {% for utility in utilities %}
+                    <option value="{{ utility }}">{{ utility }}</option>
+                    {% endfor %}
+                </select>
+                <small>Loaded from Google Sheets "Utilities" tab (active_flag = TRUE)</small>
+            </div>
+            
+            <!-- 10. Account Type -->
+            <div class="form-group">
+                <label for="account_type">Account Type*</label>
+                <select id="account_type" name="account_type" required>
+                    <option value="">Select Account Type</option>
+                    <option value="Small Demand <25 KW">Small Demand &lt;25 KW</option>
+                    <option value="Large Demand >25 KW">Large Demand &gt;25 KW</option>
+                    <option value="Mass Market [Residential]">Mass Market [Residential]</option>
+                </select>
+            </div>
+            
+            <!-- 11. Operator or Developer (DYNAMIC from Google Sheets) -->
+            <div class="form-group">
+                <label for="developer_assigned">Operator or Developer* <span class="dynamic-indicator">DYNAMIC</span></label>
+                <select id="developer_assigned" name="developer_assigned" required>
+                    <option value="">Select Operator/Developer</option>
+                    {% for developer in developers %}
+                    <option value="{{ developer }}">{{ developer }}</option>
+                    {% endfor %}
+                </select>
+                <small>Loaded from Google Sheets "Developer_Mapping" tab</small>
+            </div>
+            
+            <!-- POID field -->
+            <div class="form-group">
+                <label for="poid">POID <span id="poid_required" style="display: none;">*</span></label>
+                <input type="text" id="poid" name="poid">
+                <small id="poid_hint">Point of Delivery ID (required for NYSEG and RG&E)</small>
+            </div>
+            
+            <!-- 12. Terms & Conditions and POA Checkbox -->
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="poa_agreement" name="poa_agreement" required>
+                <label for="poa_agreement">I agree to Terms & Conditions and POA (Both GWUSA Solar Agency Agreement and POA)*</label>
+            </div>
+            
+            <!-- 13. Upload Bill Button -->
+            <div class="form-group">
+                <label for="utility_bill">Upload Bill (JPEG or PDF)*</label>
+                
+                <!-- Universal file input with responsive styling -->
+                <div class="upload-container">
+                    <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf,.jpg,.jpeg,.png" required class="file-input-hidden">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text mobile-text">Choose File</div>
+                        <div class="upload-text desktop-text">Drag & drop your utility bill here</div>
+                        <div class="upload-subtext mobile-subtext">Tap to select from camera or photos</div>
+                        <div class="upload-subtext desktop-subtext">or <strong>click to browse</strong></div>
+                    </div>
+                </div>
+                
+                <div id="fileInfo" class="file-info" style="display: none;"></div>
+                <small>Upload JPEG or PDF</small>
+            </div>
+            
+            <button type="submit" class="submit-btn">Submit Sandbox Application</button>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-header">
+                    <div class="spinner"></div>
+                    <h3>Processing Your Sandbox Submission</h3>
+                    <p class="loading-subtitle">This usually takes 1-2 minutes. Please don't close this window.</p>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+                
+                <div class="progress-details">
+                    <div id="progressStep" class="progress-step">Starting...</div>
+                    <div id="progressDescription" class="progress-description">Initializing your submission</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div style="margin-top: 40px; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
+            <h3>Sandbox Testing Instructions</h3>
+            <ol>
+                <li><strong>Modify Utilities:</strong> Edit the "Utilities" tab in your sandbox Google Sheet to add/remove utilities</li>
+                <li><strong>Modify Developers:</strong> Edit the "Developer_Mapping" tab to add new developers and their agreements</li>
+                <li><strong>Upload Templates:</strong> Add corresponding PDF templates to the sandbox Google Drive folder</li>
+                <li><strong>Clear Cache:</strong> Changes may take up to 15 minutes to appear due to caching</li>
+                <li><strong>Test Submissions:</strong> All data goes to sandbox sheets/folders only</li>
+            </ol>
+            <p><strong>Note:</strong> NYSEG and RG&E names must remain exactly as shown for POID requirement to work.</p>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/sandbox.js') }}"></script>
+</body>
+</html>

@@ -54,7 +54,9 @@ sms_service = SMSService()
 # Initialize Google Sheets structure on startup
 try:
     sheets_service.setup_required_tabs()
-    print("Google Sheets setup completed")
+    # Force update headers to new 24-column structure (one-time fix)
+    sheets_service.force_update_headers()
+    print("Google Sheets setup completed with forced header update")
 except Exception as e:
     print(f"Warning: Could not setup Google Sheets tabs: {e}")
 
@@ -1152,7 +1154,21 @@ def process_submission_background(session_id, form_data, file_path):
         update_progress(session_id, 2, "OCR Analysis", "Initializing text recognition", 25)
         time.sleep(0.2)
         update_progress(session_id, 2, "OCR Analysis", "Reading text from your utility bill", 30)
-        ocr_data = process_utility_bill(file_path, SERVICE_ACCOUNT_INFO)
+        try:
+            ocr_data = process_utility_bill(file_path, SERVICE_ACCOUNT_INFO)
+            print(f"✅ OCR extraction successful: {json.dumps(ocr_data, indent=2)}")
+        except Exception as ocr_error:
+            print(f"❌ OCR extraction failed: {str(ocr_error)}")
+            # Use empty OCR data to continue processing
+            ocr_data = {
+                'utility_name': '',
+                'customer_name': '',
+                'account_number': '',
+                'poid': '',
+                'monthly_usage': '',
+                'annual_usage': '',
+                'service_address': ''
+            }
         update_progress(session_id, 2, "OCR Analysis", "Text extraction complete", 35)
         
         # Step 3: AI Processing (35-50%)
@@ -1327,6 +1343,157 @@ def process_submission_background(session_id, form_data, file_path):
         traceback.print_exc()
         complete_progress(session_id, success=False, error=str(e))
 
+def process_sandbox_submission_background(session_id, form_data, file_path, sandbox_sheets_id, sandbox_drive_id):
+    """Background processing for sandbox submissions with separate services"""
+    try:
+        # Create sandbox-specific service instances
+        sandbox_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, sandbox_drive_id)
+        sandbox_sheets_service = GoogleSheetsService(
+            SERVICE_ACCOUNT_INFO,
+            sandbox_sheets_id,
+            os.getenv('GOOGLE_AGENT_SHEETS_ID')
+        )
+        
+        # Get timestamp for this submission
+        submission_date = datetime.now(pytz.timezone('US/Eastern'))
+        timestamp = submission_date.strftime('%Y%m%d_%H%M%S')
+        
+        # Step 1: Processing Upload (0-20%)
+        update_progress(session_id, 1, "Processing Upload", "Analyzing utility bill", 10)
+        
+        # Step 2: OCR Processing (20-40%)
+        update_progress(session_id, 2, "OCR Processing", "Extracting text from utility bill", 20)
+        ocr_data = process_utility_bill(file_path)
+        
+        update_progress(session_id, 2, "OCR Processing", "Parsing extracted data", 30)
+        time.sleep(0.5)  # Small delay for visual feedback
+        
+        # Step 3: PDF Generation (40-60%)
+        update_progress(session_id, 3, "Generating Documents", "Creating Power of Attorney", 40)
+        
+        # Generate unique POA ID
+        unique_id = generate_unique_id()
+        poa_id_generated = f"POA-{timestamp}-{unique_id.split('-')[-1]}"
+        form_data['poa_id'] = poa_id_generated
+        
+        poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
+        
+        update_progress(session_id, 3, "Generating Documents", "Creating Community Solar Agreement", 50)
+        
+        # Get agreement template from sandbox sheets
+        agreement_filename = sandbox_sheets_service.get_developer_agreement(
+            form_data['developer_assigned'],
+            form_data['utility_provider'],
+            form_data['account_type']
+        )
+        
+        agreement_pdf_path = generate_agreement_pdf(
+            form_data, ocr_data, 
+            form_data['developer_assigned'], 
+            timestamp
+        )
+        
+        update_progress(session_id, 3, "Generating Documents", "Creating Terms & Conditions", 55)
+        agency_agreement_pdf_path = generate_agency_agreement_pdf(form_data, ocr_data, timestamp)
+        
+        # Step 4: Creating Drive Folder (60-70%)
+        update_progress(session_id, 4, "Cloud Storage", "Creating sandbox folder structure", 60)
+        customer_name = form_data['contact_name']
+        drive_folder_name = f"SANDBOX_{customer_name}_{timestamp}"
+        drive_folder_id = sandbox_drive_service.create_folder(drive_folder_name)
+        
+        # Step 5: Uploading to Drive (70-85%)
+        update_progress(session_id, 5, "Cloud Storage", "Uploading utility bill", 70)
+        utility_bill_id = sandbox_drive_service.upload_file(file_path, f"utility_bill_{timestamp}.pdf", drive_folder_id)
+        
+        update_progress(session_id, 5, "Cloud Storage", "Uploading Power of Attorney", 75)
+        poa_id = sandbox_drive_service.upload_file(poa_pdf_path, f"POA_{timestamp}.pdf", drive_folder_id)
+        
+        update_progress(session_id, 5, "Cloud Storage", "Uploading Agreement", 80)
+        agreement_id = sandbox_drive_service.upload_file(agreement_pdf_path, f"Agreement_{timestamp}.pdf", drive_folder_id)
+        
+        agency_agreement_id = None
+        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
+            update_progress(session_id, 5, "Cloud Storage", "Uploading Terms & Conditions", 84)
+            agency_agreement_id = sandbox_drive_service.upload_file(agency_agreement_pdf_path, f"agency_agreement_{timestamp}.pdf", drive_folder_id)
+        
+        # Generate public links
+        update_progress(session_id, 5, "Cloud Storage", "Generating secure links", 85)
+        utility_bill_link = sandbox_drive_service.get_file_link(utility_bill_id)
+        poa_link = sandbox_drive_service.get_file_link(poa_id)
+        agreement_link = sandbox_drive_service.get_file_link(agreement_id)
+        agency_agreement_link = sandbox_drive_service.get_file_link(agency_agreement_id) if agency_agreement_id else ''
+        
+        # Step 6: Logging Data (85-95%)
+        update_progress(session_id, 6, "Logging Data", "Preparing sandbox submission data", 87)
+        
+        # Get agent name and other data
+        agent_name = sandbox_sheets_service.get_agent_name(form_data['agent_id'])
+        utility_name_final = ocr_data.get('utility_name', form_data['utility_provider'])
+        
+        sheet_data = [
+            unique_id,                       # Unique submission ID
+            submission_date.strftime('%m/%d/%Y %I:%M %p EST'),  # Submission Date
+            form_data['business_entity'],    # Business Entity Name
+            form_data['account_name'],       # Account Name
+            form_data['contact_name'],       # Contact Name
+            form_data['title'],              # Title
+            form_data['phone'],              # Phone
+            form_data['email'],              # Email
+            form_data['service_addresses'],  # Service Address
+            form_data['developer_assigned'], # Developer Assigned
+            form_data['account_type'],       # Account Type
+            form_data['utility_provider'],   # Utility Provider (Form)
+            utility_name_final,              # Utility Name (OCR)
+            ocr_data.get('account_number', ''),  # Account Number (OCR)
+            ocr_data.get('poid', ''),        # POID
+            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR)
+            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR)
+            form_data['agent_id'],           # Agent ID
+            agent_name,                      # Agent Name
+            poa_id_generated,                # POA ID
+            utility_bill_link,               # Utility Bill Link
+            poa_link,                        # POA Link
+            agreement_link,                  # Agreement Link
+            agency_agreement_link            # Terms & Conditions Link
+        ]
+        
+        update_progress(session_id, 6, "Logging Data", "Writing to sandbox Google Sheets", 90)
+        sandbox_sheets_service.append_row(sheet_data)
+        
+        # Step 7: Completing (95-100%)
+        update_progress(session_id, 7, "Completing", "Finalizing sandbox submission", 95)
+        
+        # Note: Skip email/SMS for sandbox testing
+        print("SANDBOX: Skipping email/SMS notifications")
+        
+        # Store result data in session for retrieval
+        progress_sessions[session_id]['result'] = {
+            'drive_folder': f"https://drive.google.com/drive/folders/{drive_folder_id}",
+            'documents': {
+                'utility_bill': utility_bill_link,
+                'poa': poa_link,
+                'agreement': agreement_link,
+                'agency_agreement': agency_agreement_link
+            }
+        }
+        
+        # Clean up temporary files
+        os.remove(file_path)
+        os.remove(poa_pdf_path)
+        os.remove(agreement_pdf_path)
+        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
+            os.remove(agency_agreement_pdf_path)
+        
+        # Complete successfully
+        complete_progress(session_id, success=True)
+        
+    except Exception as e:
+        print(f"Sandbox background processing error: {e}")
+        import traceback
+        traceback.print_exc()
+        complete_progress(session_id, success=False, error=str(e))
+
 @app.route('/submit', methods=['POST'])
 def submit_form():
     """Modified submit endpoint to use background processing with real-time progress tracking"""
@@ -1387,6 +1554,84 @@ def submit_form():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/sandbox-submit', methods=['POST'])
+def sandbox_submit_form():
+    """Sandbox version of submit endpoint for testing dynamic sheets"""
+    try:
+        # Check if sandbox is enabled
+        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
+            return jsonify({'error': 'Sandbox environment is not enabled'}), 404
+        
+        # Get sandbox configuration
+        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
+        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
+        
+        if not sandbox_sheets_id or not sandbox_drive_id:
+            return jsonify({'error': 'Sandbox environment not properly configured'}), 500
+        
+        form_data = {
+            'business_entity': request.form.get('business_entity', ''),
+            'account_name': request.form.get('account_name'),
+            'contact_name': request.form.get('contact_name'),
+            'title': request.form.get('title'),
+            'phone': request.form.get('phone'),
+            'email': request.form.get('email'),
+            'service_addresses': request.form.get('service_addresses'),
+            'developer_assigned': request.form.get('developer_assigned'),
+            'account_type': request.form.get('account_type'),
+            'utility_provider': request.form.get('utility_provider'),
+            'poid': request.form.get('poid', ''),
+            'agent_id': request.form.get('agent_id'),
+            'poa_agreement': request.form.get('poa_agreement') == 'on'
+        }
+        
+        if not form_data['poa_agreement']:
+            return jsonify({'error': 'POA agreement must be accepted'}), 400
+        
+        # Get the utility bill file
+        if 'utility_bill' not in request.files:
+            return jsonify({'error': 'No utility bill uploaded'}), 400
+        
+        file = request.files['utility_bill']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Save file for background processing
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"sandbox_{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Create progress session
+        session_id = create_progress_session()
+        
+        # Start background processing thread with sandbox configuration
+        thread = threading.Thread(
+            target=process_sandbox_submission_background,
+            args=(session_id, form_data, filepath, sandbox_sheets_id, sandbox_drive_id)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        # Return session ID for progress tracking
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'message': 'Sandbox processing started'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/sandbox-progress/<session_id>')
+def get_sandbox_progress(session_id):
+    """Get progress for sandbox submission"""
+    return get_progress(session_id)
 
 @app.route('/test-sendgrid-email-verification', methods=['GET', 'POST'])
 def test_sendgrid_email_verification():

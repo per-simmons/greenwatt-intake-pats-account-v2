@@ -55,7 +55,9 @@ class GoogleSheetsService:
             
             existing_values = result.get('values', [])
             
-            if not existing_values or len(existing_values[0]) < len(headers):
+            # Force update headers if they don't match exactly
+            if not existing_values or existing_values[0] != headers:
+                print(f"Updating headers: Current has {len(existing_values[0]) if existing_values else 0} columns, need {len(headers)} columns")
                 body = {
                     'values': [headers]
                 }
@@ -428,6 +430,78 @@ class GoogleSheetsService:
             print(f"Error getting developer agreement: {e}")
             return None
     
+    def force_update_headers(self):
+        """Force update headers to new 24-column structure (one-time fix)"""
+        try:
+            headers = [
+                'Unique ID',
+                'Submission Date',
+                'Business Entity Name',
+                'Account Name',
+                'Contact Name',
+                'Title',
+                'Phone',
+                'Email',
+                'Service Address',  # Column I - from OCR only
+                'Developer Assigned',
+                'Account Type',
+                'Utility Provider (Form)',
+                'Utility Name (OCR)',
+                'Account Number (OCR)',
+                'POID',  # Column O - from OCR only
+                'Monthly Usage (OCR)',
+                'Annual Usage (OCR)',
+                'Agent ID',
+                'Agent Name',
+                'POA ID',
+                'Utility Bill Link',
+                'POA Link',
+                'Agreement Link',
+                'Terms & Conditions Link'
+            ]
+            
+            # Clear the entire first row first
+            clear_request = {
+                'requests': [{
+                    'updateCells': {
+                        'range': {
+                            'sheetId': 0,
+                            'startRowIndex': 0,
+                            'endRowIndex': 1,
+                            'startColumnIndex': 0,
+                            'endColumnIndex': 26  # Clear up to column Z
+                        },
+                        'fields': 'userEnteredValue'
+                    }
+                }]
+            }
+            
+            self.service.spreadsheets().batchUpdate(
+                spreadsheetId=self.spreadsheet_id,
+                body=clear_request
+            ).execute()
+            
+            # Now set the new headers
+            body = {
+                'values': [headers]
+            }
+            
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range='A1:X1',
+                valueInputOption='RAW',
+                body=body
+            ).execute()
+            
+            print("✅ Successfully force-updated headers to new 24-column structure")
+            
+            # Apply formatting
+            self._format_header_row()
+            
+        except Exception as e:
+            print(f"❌ Error force-updating headers: {e}")
+            raise
+
     def setup_required_tabs(self):
         """Create required tabs if they don't exist and populate with initial data"""
         try:
