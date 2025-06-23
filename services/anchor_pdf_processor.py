@@ -227,7 +227,12 @@ class AnchorPDFProcessor:
                                              self.signature_config["color"][1], 
                                              self.signature_config["color"][2])
                         else:
-                            c.setFont("Helvetica", 10)
+                            # Special handling for Exhibit 1 fields with potentially long text
+                            if field_name.startswith("exhibit_") and len(str(text)) > 30:
+                                # Use smaller font for long text in Exhibit 1 table
+                                c.setFont("Helvetica", 8)
+                            else:
+                                c.setFont("Helvetica", 10)
                             c.setFillColorRGB(0, 0, 0)  # Black for non-signatures
                         
                         # Convert coordinates (pdfplumber uses top-down, reportlab uses bottom-up)
@@ -431,7 +436,7 @@ class AnchorPDFProcessor:
             if field_name == "customer_name_page1":
                 text_value = form_data.get('account_name', '')  # Primary account name
             elif field_name == "service_address_page1":
-                text_value = form_data.get('service_addresses', '')  # Service addresses from form
+                text_value = ocr_data.get('service_address', '')  # Service addresses from OCR
             elif field_name == "utility_provider_page1":
                 text_value = form_data.get('utility_provider', '')  # Utility provider from dropdown
             elif field_name == "utility_account_page1":
@@ -470,17 +475,17 @@ class AnchorPDFProcessor:
             elif field_name == "customer_info_name":
                 text_value = form_data.get('contact_name', '') or form_data.get('account_name', '')
             elif field_name == "customer_info_address":
-                # Extract street address from service addresses
-                addresses = form_data.get('service_addresses', '')
+                # Extract street address from OCR service address, fallback to form
+                addresses = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
                 text_value = self._parse_street_address(addresses)
             elif field_name == "customer_info_city":
-                addresses = form_data.get('service_addresses', '')
+                addresses = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
                 text_value = self._parse_city(addresses)
             elif field_name == "customer_info_state":
-                addresses = form_data.get('service_addresses', '')
+                addresses = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
                 text_value = self._parse_state(addresses)
             elif field_name == "customer_info_zip":
-                addresses = form_data.get('service_addresses', '')
+                addresses = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
                 text_value = self._parse_zip(addresses)
             elif field_name == "customer_info_phone":
                 text_value = form_data.get('phone', '')
@@ -517,8 +522,8 @@ class AnchorPDFProcessor:
                 # Business name field - use account name (business entity)
                 text_value = form_data.get('account_name', '') or form_data.get('business_entity', '')
             elif field_name == "subscriber_address":
-                # Address field - use full service address
-                text_value = form_data.get('service_addresses', '')
+                # Address field - use OCR service address, fallback to form
+                text_value = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
             elif field_name == "subscriber_email":
                 # Email field - use form email
                 text_value = form_data.get('email', '')

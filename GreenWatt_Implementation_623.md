@@ -172,7 +172,7 @@ PDF Field → Data Source:
 **Problem:** PDF uploads hang indefinitely during conversion, causing 133-byte error responses
 **Root Cause:** `pdf2image.convert_from_path()` hanging without timeout protection
 **Solution:** 
-- Added 30-second timeout protection to prevent infinite hangs
+- ~~Added 30-second timeout protection to prevent infinite hangs~~ Removed due to signal issues in threads
 - Reduced DPI from 300→150 for better memory efficiency
 - Added explicit poppler_path='/usr/bin' for production environment
 - Added 50MB file size limit to prevent oversized PDF processing
@@ -211,6 +211,22 @@ PDF Field → Data Source:
 
 **Priority:** Medium (UX improvement, not blocking functionality)
 **Estimated Effort:** 2-3 hours to implement proper progress tracking
+
+### Issue 6: Service Address Fields Blank in PDFs ✅ FIXED (June 23, 2025)
+**Problem:** Service address fields showing blank in POA page 1 and Agreement page 7
+**Root Cause:** Fields were using `form_data.get('service_addresses', '')` instead of OCR data
+**Solution:** Updated all service address references to use `ocr_data.get('service_address', '')` with form fallback
+
+**Fixed Fields:**
+1. POA Page 1: `service_address_page1` - Already using OCR data ✅
+2. Agreement Page 7: `subscriber_address` - Updated to use OCR data ✅
+3. Mass Market fields: `customer_info_address/city/state/zip` - Updated to use OCR data ✅
+4. Exhibit 1: `exhibit_service_address` - Already using OCR with fallback ✅
+
+### Issue 7: Exhibit 1 Field Truncation ✅ FIXED (June 23, 2025)
+**Problem:** Account number showing as "1" and service address getting cut off in Exhibit 1
+**Root Cause:** Long text being truncated due to fixed font size and table cell constraints
+**Solution:** Added dynamic font sizing for Exhibit 1 fields - reduces font from 10pt to 8pt for text longer than 30 characters
 
 ## Deployment Ready
 All critical client feedback has been addressed and tested. The system is ready for production deployment.
