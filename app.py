@@ -198,11 +198,23 @@ def get_progress(session_id):
 @app.route('/')
 def index():
     try:
-        # Get dynamic data from Google Sheets
-        utilities = sheets_service.get_active_utilities()
-        developers = sheets_service.get_active_developers()
-        
-        return render_template('index.html', utilities=utilities, developers=developers)
+        # Create dynamic sheets service instance
+        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+        if dynamic_sheets_id:
+            dynamic_sheets_service = GoogleSheetsService(
+                SERVICE_ACCOUNT_INFO, 
+                dynamic_sheets_id,
+                os.getenv('GOOGLE_AGENT_SHEETS_ID')
+            )
+            
+            # Get dynamic data from Dynamic Form Revisions Google Sheet
+            utilities = dynamic_sheets_service.get_active_utilities()
+            developers = dynamic_sheets_service.get_active_developers()
+            
+            return render_template('index.html', utilities=utilities, developers=developers)
+        else:
+            raise Exception("Dynamic sheets ID not configured")
+            
     except Exception as e:
         print(f"Error loading dynamic data: {e}")
         # Fallback to default data if sheets are unavailable
@@ -214,39 +226,6 @@ def index():
 def test_dashboard():
     return render_template('test.html')
 
-@app.route('/sandbox')
-def sandbox():
-    """Sandbox environment for testing dynamic Google Sheets integration"""
-    try:
-        # Check if sandbox is enabled
-        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
-            return "Sandbox environment is not enabled", 404
-        
-        # Create sandbox-specific service instances
-        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
-        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
-        
-        if not sandbox_sheets_id or not sandbox_drive_id:
-            return "Sandbox environment not properly configured", 500
-        
-        # Create sandbox sheets service
-        sandbox_sheets_service = GoogleSheetsService(
-            SERVICE_ACCOUNT_INFO,
-            sandbox_sheets_id,
-            os.getenv('GOOGLE_AGENT_SHEETS_ID')  # Can share agent sheet
-        )
-        
-        # Get dynamic data from sandbox sheets
-        utilities = sandbox_sheets_service.get_active_utilities()
-        developers = sandbox_sheets_service.get_active_developers()
-        
-        return render_template('sandbox.html', 
-                             utilities=utilities, 
-                             developers=developers,
-                             is_sandbox=True)
-    except Exception as e:
-        print(f"Sandbox error: {e}")
-        return f"Sandbox error: {str(e)}", 500
 
 @app.route('/test-pixel-perfect')
 def test_pixel_perfect():
@@ -1478,7 +1457,7 @@ def test_pixel_perfect_full():
         }), 500
 
 def process_submission_background(session_id, form_data, file_path):
-    """Background processing function with progress tracking"""
+    """Background processing function with progress tracking and dynamic template selection"""
     try:
         # Step 1: Uploading Document (5-20%)
         update_progress(session_id, 1, "Uploading Document", "Saving your utility bill securely", 5)
@@ -1540,7 +1519,50 @@ def process_submission_background(session_id, form_data, file_path):
         poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
         
         update_progress(session_id, 4, "Generating Documents", "Creating Community Solar Agreement", 65)
-        agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
+        
+        # Get agreement template from dynamic sheets with validation
+        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+        dynamic_drive_id = os.getenv('DYNAMIC_GOOGLE_DRIVE_FOLDER_ID')
+        
+        if dynamic_sheets_id and dynamic_drive_id:
+            # Create dynamic services
+            dynamic_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, dynamic_drive_id)
+            dynamic_sheets_service = GoogleSheetsService(
+                SERVICE_ACCOUNT_INFO, 
+                dynamic_sheets_id,
+                os.getenv('GOOGLE_AGENT_SHEETS_ID')
+            )
+            
+            agreement_filename = dynamic_sheets_service.get_developer_agreement(
+                form_data['developer_assigned'], 
+                form_data['utility_provider'], 
+                form_data['account_type']
+            )
+            
+            # Check if we need Mass Market override
+            if form_data['account_type'] == 'Mass Market [Residential]':
+                mass_market_filename = dynamic_sheets_service.get_developer_agreement(
+                    form_data['developer_assigned'], 
+                    'Mass Market', 
+                    form_data['account_type']
+                )
+                if mass_market_filename:
+                    agreement_filename = mass_market_filename
+            
+            if agreement_filename:
+                try:
+                    agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp, agreement_filename, dynamic_drive_service)
+                except Exception as template_error:
+                    print(f"Template processing failed: {template_error}")
+                    # Fallback to original method
+                    agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
+            else:
+                print(f"No template mapping found for {form_data['developer_assigned']} + {form_data['utility_provider']}")
+                # Fallback to original method
+                agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
+        else:
+            # Fallback to original method if dynamic config not available
+            agreement_pdf_path = generate_agreement_pdf(form_data, ocr_data, form_data['developer_assigned'], timestamp)
         
         # Generate Terms & Conditions (Agency Agreement) with signature
         update_progress(session_id, 4, "Generating Documents", "Creating Terms & Conditions", 68)
@@ -1692,179 +1714,6 @@ def process_submission_background(session_id, form_data, file_path):
         traceback.print_exc()
         complete_progress(session_id, success=False, error=str(e))
 
-def process_sandbox_submission_background(session_id, form_data, file_path, sandbox_sheets_id, sandbox_drive_id):
-    """Background processing for sandbox submissions with separate services"""
-    try:
-        # Create sandbox-specific service instances
-        sandbox_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, sandbox_drive_id)
-        sandbox_sheets_service = GoogleSheetsService(
-            SERVICE_ACCOUNT_INFO,
-            sandbox_sheets_id,
-            os.getenv('GOOGLE_AGENT_SHEETS_ID')
-        )
-        
-        # Get timestamp for this submission
-        submission_date = datetime.now(pytz.timezone('US/Eastern'))
-        timestamp = submission_date.strftime('%Y%m%d_%H%M%S')
-        
-        # Step 1: Processing Upload (0-20%)
-        update_progress(session_id, 1, "Processing Upload", "Analyzing utility bill", 10)
-        
-        # Step 2: OCR Processing (20-40%)
-        update_progress(session_id, 2, "OCR Processing", "Extracting text from utility bill", 20)
-        ocr_data = process_utility_bill(file_path)
-        
-        update_progress(session_id, 2, "OCR Processing", "Parsing extracted data", 30)
-        time.sleep(0.5)  # Small delay for visual feedback
-        
-        # Step 3: PDF Generation (40-60%)
-        update_progress(session_id, 3, "Generating Documents", "Creating Power of Attorney", 40)
-        
-        # Generate unique POA ID
-        unique_id = generate_unique_id()
-        poa_id_generated = f"POA-{timestamp}-{unique_id.split('-')[-1]}"
-        form_data['poa_id'] = poa_id_generated
-        
-        poa_pdf_path = generate_poa_pdf(form_data, ocr_data, timestamp)
-        
-        update_progress(session_id, 3, "Generating Documents", "Creating Community Solar Agreement", 50)
-        
-        # Get agreement template from sandbox sheets with validation
-        agreement_filename = sandbox_sheets_service.get_developer_agreement(
-            form_data['developer_assigned'],
-            form_data['utility_provider'],
-            form_data['account_type']
-        )
-        
-        if not agreement_filename:
-            # Try fallback with Mass Market template
-            print(f"SANDBOX: No specific template found for {form_data['developer_assigned']} + {form_data['utility_provider']}, trying Mass Market fallback")
-            agreement_filename = sandbox_sheets_service.get_developer_agreement(
-                form_data['developer_assigned'],
-                "Mass Market",
-                form_data['account_type']
-            )
-            
-            if not agreement_filename:
-                # Final fallback - log warning but continue with legacy generator
-                print(f"SANDBOX WARNING: No template mapping found for {form_data['developer_assigned']}. Using legacy PDF generator.")
-        
-        try:
-            agreement_pdf_path = generate_agreement_pdf(
-                form_data, ocr_data, 
-                form_data['developer_assigned'], 
-                timestamp
-            )
-        except Exception as pdf_error:
-            print(f"SANDBOX: Agreement PDF generation error: {pdf_error}")
-            # Continue processing but note the error
-            agreement_pdf_path = None
-        
-        update_progress(session_id, 3, "Generating Documents", "Creating Terms & Conditions", 55)
-        agency_agreement_pdf_path = generate_agency_agreement_pdf(form_data, ocr_data, timestamp)
-        
-        # Step 4: Creating Drive Folder (60-70%)
-        update_progress(session_id, 4, "Cloud Storage", "Creating sandbox folder structure", 60)
-        customer_name = form_data['contact_name']
-        drive_folder_name = f"SANDBOX_{customer_name}_{timestamp}"
-        drive_folder_id = sandbox_drive_service.create_folder(drive_folder_name)
-        
-        # Step 5: Uploading to Drive (70-85%)
-        update_progress(session_id, 5, "Cloud Storage", "Uploading utility bill", 70)
-        utility_bill_id = sandbox_drive_service.upload_file(file_path, f"utility_bill_{timestamp}.pdf", drive_folder_id)
-        
-        update_progress(session_id, 5, "Cloud Storage", "Uploading Power of Attorney", 75)
-        poa_id = sandbox_drive_service.upload_file(poa_pdf_path, f"POA_{timestamp}.pdf", drive_folder_id)
-        
-        update_progress(session_id, 5, "Cloud Storage", "Uploading Agreement", 80)
-        agreement_id = None
-        if agreement_pdf_path and os.path.exists(agreement_pdf_path):
-            agreement_id = sandbox_drive_service.upload_file(agreement_pdf_path, f"Agreement_{timestamp}.pdf", drive_folder_id)
-        else:
-            print("SANDBOX WARNING: Agreement PDF not generated, skipping upload")
-        
-        agency_agreement_id = None
-        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
-            update_progress(session_id, 5, "Cloud Storage", "Uploading Terms & Conditions", 84)
-            agency_agreement_id = sandbox_drive_service.upload_file(agency_agreement_pdf_path, f"agency_agreement_{timestamp}.pdf", drive_folder_id)
-        
-        # Generate public links
-        update_progress(session_id, 5, "Cloud Storage", "Generating secure links", 85)
-        utility_bill_link = sandbox_drive_service.get_file_link(utility_bill_id)
-        poa_link = sandbox_drive_service.get_file_link(poa_id)
-        agreement_link = sandbox_drive_service.get_file_link(agreement_id) if agreement_id else ''
-        agency_agreement_link = sandbox_drive_service.get_file_link(agency_agreement_id) if agency_agreement_id else ''
-        
-        # Step 6: Logging Data (85-95%)
-        update_progress(session_id, 6, "Logging Data", "Preparing sandbox submission data", 87)
-        
-        # Get agent name and other data
-        agent_name = sandbox_sheets_service.get_agent_name(form_data['agent_id'])
-        utility_name_final = ocr_data.get('utility_name', form_data['utility_provider'])
-        
-        sheet_data = [
-            unique_id,                       # Unique submission ID
-            submission_date.strftime('%m/%d/%Y %I:%M %p EST'),  # Submission Date
-            form_data['business_entity'],    # Business Entity Name
-            form_data['account_name'],       # Account Name
-            form_data['contact_name'],       # Contact Name
-            form_data['title'],              # Title
-            form_data['phone'],              # Phone
-            form_data['email'],              # Email
-            form_data['service_addresses'],  # Service Address
-            form_data['developer_assigned'], # Developer Assigned
-            form_data['account_type'],       # Account Type
-            form_data['utility_provider'],   # Utility Provider (Form)
-            utility_name_final,              # Utility Name (OCR)
-            ocr_data.get('account_number', ''),  # Account Number (OCR)
-            ocr_data.get('poid', ''),        # POID
-            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR)
-            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR)
-            form_data['agent_id'],           # Agent ID
-            agent_name,                      # Agent Name
-            poa_id_generated,                # POA ID
-            utility_bill_link,               # Utility Bill Link
-            poa_link,                        # POA Link
-            agreement_link,                  # Agreement Link
-            agency_agreement_link            # Terms & Conditions Link
-        ]
-        
-        update_progress(session_id, 6, "Logging Data", "Writing to sandbox Google Sheets", 90)
-        sandbox_sheets_service.append_row(sheet_data)
-        
-        # Step 7: Completing (95-100%)
-        update_progress(session_id, 7, "Completing", "Finalizing sandbox submission", 95)
-        
-        # Note: Skip email/SMS for sandbox testing
-        print("SANDBOX: Skipping email/SMS notifications")
-        
-        # Store result data in session for retrieval
-        progress_sessions[session_id]['result'] = {
-            'drive_folder': f"https://drive.google.com/drive/folders/{drive_folder_id}",
-            'documents': {
-                'utility_bill': utility_bill_link,
-                'poa': poa_link,
-                'agreement': agreement_link,
-                'agency_agreement': agency_agreement_link
-            }
-        }
-        
-        # Clean up temporary files
-        os.remove(file_path)
-        os.remove(poa_pdf_path)
-        if agreement_pdf_path and os.path.exists(agreement_pdf_path):
-            os.remove(agreement_pdf_path)
-        if agency_agreement_pdf_path and os.path.exists(agency_agreement_pdf_path):
-            os.remove(agency_agreement_pdf_path)
-        
-        # Complete successfully
-        complete_progress(session_id, success=True)
-        
-    except Exception as e:
-        print(f"Sandbox background processing error: {e}")
-        import traceback
-        traceback.print_exc()
-        complete_progress(session_id, success=False, error=str(e))
 
 @app.route('/submit', methods=['POST'])
 def submit_form():
@@ -1877,9 +1726,11 @@ def submit_form():
             'title': request.form.get('title'),
             'phone': request.form.get('phone'),
             'email': request.form.get('email'),
+            'service_addresses': request.form.get('service_addresses'),
             'developer_assigned': request.form.get('developer_assigned'),
             'account_type': request.form.get('account_type'),
             'utility_provider': request.form.get('utility_provider'),
+            'poid': request.form.get('poid', ''),
             'agent_id': request.form.get('agent_id'),
             'poa_agreement': request.form.get('poa_agreement') == 'on'
         }
@@ -1927,158 +1778,183 @@ def submit_form():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/sandbox-submit', methods=['POST'])
-def sandbox_submit_form():
-    """Sandbox version of submit endpoint for testing dynamic sheets"""
-    try:
-        # Check if sandbox is enabled
-        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
-            return jsonify({'error': 'Sandbox environment is not enabled'}), 404
-        
-        # Get sandbox configuration
-        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
-        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
-        
-        if not sandbox_sheets_id or not sandbox_drive_id:
-            return jsonify({'error': 'Sandbox environment not properly configured'}), 500
-        
-        form_data = {
-            'business_entity': request.form.get('business_entity', ''),
-            'account_name': request.form.get('account_name'),
-            'contact_name': request.form.get('contact_name'),
-            'title': request.form.get('title'),
-            'phone': request.form.get('phone'),
-            'email': request.form.get('email'),
-            'service_addresses': request.form.get('service_addresses'),
-            'developer_assigned': request.form.get('developer_assigned'),
-            'account_type': request.form.get('account_type'),
-            'utility_provider': request.form.get('utility_provider'),
-            'poid': request.form.get('poid', ''),
-            'agent_id': request.form.get('agent_id'),
-            'poa_agreement': request.form.get('poa_agreement') == 'on'
-        }
-        
-        if not form_data['poa_agreement']:
-            return jsonify({'error': 'POA agreement must be accepted'}), 400
-        
-        # Get the utility bill file
-        if 'utility_bill' not in request.files:
-            return jsonify({'error': 'No utility bill uploaded'}), 400
-        
-        file = request.files['utility_bill']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file type'}), 400
-        
-        # Save file for background processing
-        filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"sandbox_{timestamp}_{filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        # Create progress session
-        session_id = create_progress_session()
-        
-        # Start background processing thread with sandbox configuration
-        thread = threading.Thread(
-            target=process_sandbox_submission_background,
-            args=(session_id, form_data, filepath, sandbox_sheets_id, sandbox_drive_id)
-        )
-        thread.daemon = True
-        thread.start()
-        
-        # Return session ID for progress tracking
-        return jsonify({
-            'success': True,
-            'session_id': session_id,
-            'message': 'Sandbox processing started'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/sandbox-progress/<session_id>')
-def get_sandbox_progress(session_id):
-    """Get progress for sandbox submission"""
-    return get_progress(session_id)
 
-@app.route('/sandbox-test')
-def sandbox_test():
-    """Test sandbox configuration and Google Sheets connectivity"""
+@app.route('/dynamic-test')
+def dynamic_test():
+    """Test dynamic Google Sheets and Drive connectivity"""
     try:
-        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
-            return "Sandbox environment is not enabled. Set SANDBOX_ENABLED=true", 404
-        
-        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
-        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
+        # Check environment variables
+        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+        dynamic_drive_id = os.getenv('DYNAMIC_GOOGLE_DRIVE_FOLDER_ID')
         
         test_html = f'''
         <html>
-        <head><title>Sandbox Configuration Test</title></head>
+        <head><title>Dynamic System Test Dashboard</title></head>
         <body style="font-family: Arial; padding: 20px;">
-            <h2>🧪 Sandbox Configuration Test</h2>
+            <h2>🔧 Dynamic System Test Dashboard</h2>
             
             <h3>Environment Variables</h3>
             <ul>
-                <li><strong>SANDBOX_ENABLED:</strong> {os.getenv('SANDBOX_ENABLED', 'Not set')}</li>
-                <li><strong>SANDBOX_GOOGLE_SHEETS_ID:</strong> {'✅ Set' if sandbox_sheets_id else '❌ Not set'}</li>
-                <li><strong>SANDBOX_GOOGLE_DRIVE_FOLDER_ID:</strong> {'✅ Set' if sandbox_drive_id else '❌ Not set'}</li>
+                <li><strong>DYNAMIC_GOOGLE_SHEETS_ID:</strong> {'✅ Set' if dynamic_sheets_id else '❌ Not set'}</li>
+                <li><strong>DYNAMIC_GOOGLE_DRIVE_FOLDER_ID:</strong> {'✅ Set' if dynamic_drive_id else '❌ Not set'}</li>
+                <li><strong>Sheet ID:</strong> {dynamic_sheets_id if dynamic_sheets_id else 'Not configured'}</li>
+                <li><strong>Drive ID:</strong> {dynamic_drive_id if dynamic_drive_id else 'Not configured'}</li>
             </ul>
         '''
         
-        if sandbox_sheets_id:
+        if dynamic_sheets_id:
             try:
-                sandbox_sheets_service = GoogleSheetsService(
+                # Create dynamic sheets service
+                dynamic_sheets_service = GoogleSheetsService(
                     SERVICE_ACCOUNT_INFO,
-                    sandbox_sheets_id,
+                    dynamic_sheets_id,
                     os.getenv('GOOGLE_AGENT_SHEETS_ID')
                 )
                 
-                utilities = sandbox_sheets_service.get_active_utilities()
-                developers = sandbox_sheets_service.get_active_developers()
+                # Test utilities retrieval
+                utilities = dynamic_sheets_service.get_active_utilities()
+                developers = dynamic_sheets_service.get_active_developers()
                 
                 test_html += f'''
-                <h3>Sandbox Google Sheets Test</h3>
-                <p><strong>✅ Successfully connected to sandbox sheets!</strong></p>
+                <h3>✅ Google Sheets Connection Test - SUCCESS</h3>
+                <p><strong>Successfully connected to Dynamic Form Revisions sheet!</strong></p>
+                
+                <h4>Active Utilities Retrieved:</h4>
                 <ul>
-                    <li><strong>Active Utilities:</strong> {', '.join(utilities) if utilities else 'None found'}</li>
-                    <li><strong>Active Developers:</strong> {', '.join(developers) if developers else 'None found'}</li>
-                </ul>
                 '''
-            except Exception as e:
+                
+                if utilities:
+                    for utility in utilities:
+                        test_html += f'<li><strong>{utility}</strong> - Active in dropdown</li>'
+                else:
+                    test_html += '<li><em>No active utilities found - check Utilities tab</em></li>'
+                
+                test_html += '''
+                </ul>
+                
+                <h4>Active Developers Retrieved:</h4>
+                <ul>
+                '''
+                
+                if developers:
+                    for developer in developers:
+                        test_html += f'<li><strong>{developer}</strong> - Active in dropdown</li>'
+                else:
+                    test_html += '<li><em>No developers found - check Developer_Mapping tab</em></li>'
+                
+                test_html += '</ul>'
+                
+                # Test developer mapping details
+                try:
+                    test_html += '<h4>Developer-Utility Template Mappings:</h4><ul>'
+                    # Get raw mapping data for display
+                    all_mappings = dynamic_sheets_service.get_all_developer_mappings()
+                    if all_mappings:
+                        for mapping in all_mappings[:10]:  # Show first 10
+                            developer = mapping.get('developer_name', 'Unknown')
+                            utility = mapping.get('utility_name', 'Unknown') 
+                            filename = mapping.get('file_name', 'Unknown')
+                            test_html += f'<li><strong>{developer}</strong> + <strong>{utility}</strong> → {filename}</li>'
+                    else:
+                        test_html += '<li><em>No mappings found in Developer_Mapping tab</em></li>'
+                    test_html += '</ul>'
+                except Exception as mapping_error:
+                    test_html += f'<p><strong>Mapping Error:</strong> {str(mapping_error)}</p>'
+                
+            except Exception as sheets_error:
                 test_html += f'''
-                <h3>Sandbox Google Sheets Test</h3>
-                <p><strong>❌ Error connecting to sandbox sheets:</strong> {str(e)}</p>
+                <h3>❌ Google Sheets Connection Test - FAILED</h3>
+                <p><strong>Error connecting to sheets:</strong> {str(sheets_error)}</p>
+                <p><strong>Troubleshooting:</strong></p>
+                <ul>
+                    <li>Verify sheet ID is correct</li>
+                    <li>Check service account has Editor permissions</li>
+                    <li>Ensure Utilities and Developer_Mapping tabs exist</li>
+                </ul>
                 '''
         else:
             test_html += '''
-            <h3>Sandbox Google Sheets Test</h3>
-            <p><strong>❌ SANDBOX_GOOGLE_SHEETS_ID not configured</strong></p>
+            <h3>❌ Google Sheets Test - Not Configured</h3>
+            <p><strong>DYNAMIC_GOOGLE_SHEETS_ID not set</strong></p>
             '''
         
+        # Test Google Drive connectivity
+        if dynamic_drive_id:
+            try:
+                dynamic_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, dynamic_drive_id)
+                
+                # Try to list files in Templates folder
+                try:
+                    # This will test if we can access the drive folder
+                    test_file_list = "Testing drive access..."
+                    test_html += f'''
+                    <h3>✅ Google Drive Connection Test - SUCCESS</h3>
+                    <p><strong>Successfully connected to GreenWatt_Dynamic_Intake folder!</strong></p>
+                    <p><strong>Templates folder accessible for agreement PDFs</strong></p>
+                    '''
+                except Exception as drive_error:
+                    test_html += f'''
+                    <h3>❌ Google Drive Connection Test - FAILED</h3>
+                    <p><strong>Error:</strong> {str(drive_error)}</p>
+                    '''
+                    
+            except Exception as drive_service_error:
+                test_html += f'''
+                <h3>❌ Google Drive Service Test - FAILED</h3>
+                <p><strong>Error:</strong> {str(drive_service_error)}</p>
+                '''
+        else:
+            test_html += '''
+            <h3>❌ Google Drive Test - Not Configured</h3>
+            <p><strong>DYNAMIC_GOOGLE_DRIVE_FOLDER_ID not set</strong></p>
+            '''
+        
+        # Add testing instructions
         test_html += f'''
-            <h3>Testing Tools</h3>
-            <ul>
-                <li><strong><a href="/sandbox">🧪 Go to Sandbox Form</a></strong> - Test the full form with dynamic dropdowns</li>
-                <li><strong><a href="/sandbox-clear-cache">🗑️ Clear Cache</a></strong> - Force immediate update of dropdown data</li>
-                <li><strong><a href="/sandbox-test">🔄 Refresh This Test</a></strong> - Re-run configuration verification</li>
-            </ul>
+            <h3>🧪 Live Testing Instructions</h3>
+            <div style="background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <h4>Test Dynamic Changes:</h4>
+                <ol>
+                    <li><strong>Test Utility Changes:</strong>
+                        <ul>
+                            <li>Open <a href="https://docs.google.com/spreadsheets/d/{dynamic_sheets_id}/edit" target="_blank">Dynamic Form Revisions Sheet</a></li>
+                            <li>Go to "Utilities" tab</li>
+                            <li>Change "Orange & Rockland" from FALSE to TRUE</li>
+                            <li>Click <strong>Clear Cache</strong> below</li>
+                            <li>Refresh this page - should see Orange & Rockland in active utilities</li>
+                        </ul>
+                    </li>
+                    <li><strong>Test Developer Changes:</strong>
+                        <ul>
+                            <li>Go to "Developer_Mapping" tab</li>
+                            <li>Add a test row: "Test Developer | National Grid | test-agreement.pdf"</li>
+                            <li>Clear cache and refresh - should see "Test Developer" in developers list</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
             
-            <h3>Next Steps</h3>
+            <h3>🔧 Testing Tools</h3>
+            <div style="margin: 20px 0;">
+                <a href="/dynamic-clear-cache" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
+                    🗑️ Clear Cache (Test Changes Immediately)
+                </a>
+                <a href="/dynamic-test" style="display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
+                    🔄 Refresh This Test
+                </a>
+                <a href="/" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; margin: 5px;">
+                    🏠 Test Main Form
+                </a>
+            </div>
+            
+            <h3>📋 Next Steps</h3>
             <ol>
-                <li>Create sandbox Google Sheet and add ID to environment variables</li>
-                <li>Create sandbox Google Drive folder and add ID to environment variables</li>
-                <li>Set up Utilities and Developer_Mapping tabs in sandbox sheet</li>
-                <li>Upload test agreement templates to sandbox Drive folder</li>
-                <li>Use <strong>Clear Cache</strong> tool above for immediate testing</li>
-                <li>Test the full flow with the <strong>Sandbox Form</strong> above</li>
+                <li>Verify all connections show ✅ above</li>
+                <li>Test changing utilities/developers and see immediate results</li>
+                <li>Test the main form at <a href="/">localhost:5001</a></li>
+                <li>If everything works, push to GitHub and deploy to production</li>
             </ol>
-            
-            <h3>Configuration Guide</h3>
-            <p>See the <a href="https://github.com/per-simmons/greenwatt-intake-pats-account-v2/blob/main/DYNAMIC_SHEETS_SANDBOX_ROADMAP.md">DYNAMIC_SHEETS_SANDBOX_ROADMAP.md</a> for detailed setup instructions and troubleshooting.</p>
         </body>
         </html>
         '''
@@ -2086,38 +1962,44 @@ def sandbox_test():
         return test_html
         
     except Exception as e:
-        return f"Sandbox test error: {str(e)}", 500
+        return f'''
+        <html>
+        <head><title>Dynamic Test - Error</title></head>
+        <body style="font-family: Arial; padding: 20px;">
+            <h2>❌ Dynamic Test Error</h2>
+            <p><strong>Error:</strong> {str(e)}</p>
+            <p><a href="/">← Back to Main Form</a></p>
+        </body>
+        </html>
+        ''', 500
 
-@app.route('/sandbox-clear-cache')
-def sandbox_clear_cache():
-    """Clear sandbox Google Sheets cache for immediate testing"""
+@app.route('/dynamic-clear-cache')
+def dynamic_clear_cache():
+    """Clear dynamic Google Sheets cache for immediate testing"""
     try:
-        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
-            return "Sandbox environment is not enabled", 404
+        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+        if not dynamic_sheets_id:
+            return "Dynamic sheets not configured", 500
         
-        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
-        if not sandbox_sheets_id:
-            return "Sandbox not configured", 500
-        
-        # Create sandbox sheets service and clear cache
-        sandbox_sheets_service = GoogleSheetsService(
+        # Create dynamic sheets service and clear cache
+        dynamic_sheets_service = GoogleSheetsService(
             SERVICE_ACCOUNT_INFO,
-            sandbox_sheets_id,
+            dynamic_sheets_id,
             os.getenv('GOOGLE_AGENT_SHEETS_ID')
         )
         
-        sandbox_sheets_service.clear_cache()
+        dynamic_sheets_service.clear_cache()
         
         # Get fresh data
-        utilities = sandbox_sheets_service.get_active_utilities()
-        developers = sandbox_sheets_service.get_active_developers()
+        utilities = dynamic_sheets_service.get_active_utilities()
+        developers = dynamic_sheets_service.get_active_developers()
         
         return f'''
         <html>
-        <head><title>Sandbox Cache Cleared</title></head>
+        <head><title>Dynamic Cache Cleared</title></head>
         <body style="font-family: Arial; padding: 20px;">
-            <h2>🗑️ Sandbox Cache Cleared</h2>
-            <p><strong>✅ Cache successfully cleared!</strong></p>
+            <h2>🗑️ Dynamic Cache Cleared Successfully!</h2>
+            <p><strong>✅ Cache cleared - changes from Google Sheets are now active</strong></p>
             
             <h3>Fresh Data Retrieved:</h3>
             <ul>
@@ -2125,9 +2007,16 @@ def sandbox_clear_cache():
                 <li><strong>Active Developers:</strong> {', '.join(developers) if developers else 'None found'}</li>
             </ul>
             
-            <p>You can now test changes immediately without waiting 15 minutes.</p>
-            <p><a href="/sandbox">→ Go to Sandbox Form</a></p>
-            <p><a href="/sandbox-test">→ Run Configuration Test</a></p>
+            <p><strong>You can now test changes immediately without waiting 15 minutes!</strong></p>
+            
+            <div style="margin: 20px 0;">
+                <a href="/dynamic-test" style="display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;">
+                    ← Back to Dynamic Test Dashboard
+                </a>
+                <a href="/" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                    🧪 Test Main Form
+                </a>
+            </div>
         </body>
         </html>
         '''

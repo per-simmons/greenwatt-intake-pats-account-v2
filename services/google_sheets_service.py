@@ -621,6 +621,33 @@ class GoogleSheetsService:
         except Exception as e:
             print(f"Error setting up required tabs: {e}")
     
+    def get_all_developer_mappings(self):
+        """Get all developer mappings for testing/display purposes"""
+        try:
+            rows = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range="Developer_Mapping!A:C"
+            ).execute().get('values', [])
+            
+            if not rows:
+                return []
+            
+            # Skip header row and return as list of dictionaries
+            mappings = []
+            for row in rows[1:]:
+                if len(row) >= 3:
+                    mappings.append({
+                        'developer_name': row[0].strip(),
+                        'utility_name': row[1].strip(),
+                        'file_name': row[2].strip()
+                    })
+            
+            return mappings
+            
+        except Exception as e:
+            print(f"Error getting all developer mappings: {e}")
+            return []
+    
     def clear_cache(self):
         """Clear the lookup cache"""
         self.cache.clear()

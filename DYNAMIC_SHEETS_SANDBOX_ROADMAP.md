@@ -48,6 +48,50 @@ OLD WAY: Call developer → Code changes → Test → Deploy (days/weeks)
 NEW WAY: Edit Google Sheet → Wait 15 minutes → Done (minutes)
 ```
 
+#### **Current System Setup (Ready for Jason's Use):**
+
+**Google Sheet Name**: "GreenWatt_Intake_Log_FOR DYNAMIC FORM REVISIONS"
+- **URL**: https://docs.google.com/spreadsheets/d/1mMbbZxRrzHf_jlSWC6WWYLiByL1pGZ9kNOxyvizSLys/edit
+- **Sheet ID**: `1mMbbZxRrzHf_jlSWC6WWYLiByL1pGZ9kNOxyvizSLys`
+- **Purpose**: Jason can edit this sheet to control what appears on the intake form
+
+**Google Drive Folder Name**: "GreenWatt_Dynamic_Intake" 
+- **URL**: https://drive.google.com/drive/folders/1rT3Nl9Vi8JtDkY1OP_NxdPiK6JE3I7Us
+- **Folder ID**: `1rT3Nl9Vi8JtDkY1OP_NxdPiK6JE3I7Us`
+- **Templates Subfolder**: "Templates" (where Jason uploads new contract PDFs)
+
+#### **How Jason Manages Contract Templates:**
+
+**Step 1: Upload New Contract PDF**
+- Go to Google Drive folder: "GreenWatt_Dynamic_Intake" → "Templates"
+- Upload new PDF with any name (e.g., "Solar-Simplified-NYSEG-Agreement-v3.pdf")
+- No special naming rules - Jason can name it whatever makes sense
+
+**Step 2: Update the Mapping**
+- Open Google Sheet: "GreenWatt_Intake_Log_FOR DYNAMIC FORM REVISIONS"
+- Go to "Developer_Mapping" tab
+- Add or edit a row:
+  ```
+  | Solar Simplified | NYSEG | Solar-Simplified-NYSEG-Agreement-v3.pdf |
+  ```
+- File name in sheet MUST match exactly what was uploaded
+
+**Step 3: Automatic Results**
+- Within 15 minutes, when someone selects "Solar Simplified" + "NYSEG" on the form
+- System automatically finds and uses the new PDF
+- No website restarts or code changes needed
+
+**Adding New Utilities (Future Use)**
+- Go to "Utilities" tab in Google Sheet
+- Change active_flag from FALSE to TRUE for any utility
+- New utility appears in dropdown within 15 minutes
+
+**Adding New Solar Developers**
+- Go to "Developer_Mapping" tab 
+- Add rows for new developer with all their utility combinations
+- Upload their contract templates to "Templates" folder
+- New developer appears in dropdown automatically
+
 ## Overview
 This document outlines the complete process for creating a sandbox environment to test dynamic Google Sheets integration for the GreenWatt intake form. The sandbox will allow testing of dynamic utilities, developers, and agreement mapping without affecting the production system.
 
