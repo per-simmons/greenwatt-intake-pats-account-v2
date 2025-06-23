@@ -244,11 +244,11 @@ class AnchorPDFProcessor:
                         # Special handling for service address in Exhibit 1 - split into multiple lines
                         if field_name == "exhibit_service_address":
                             # Split address into multiple lines
-                            # Service Address cell appears to be narrower than expected
+                            # Service Address column is 168.2 points wide (554.6 to 722.8)
                             lines = []
                             words = str(text).split()
                             current_line = ""
-                            max_width = 90  # Conservative width to avoid any overlap
+                            max_width = 160  # Slightly less than column width (168.2) to ensure margin
                             
                             for word in words:
                                 test_line = current_line + " " + word if current_line else word

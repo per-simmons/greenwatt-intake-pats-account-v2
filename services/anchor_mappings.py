@@ -223,25 +223,25 @@ EXHIBIT_1_ANCHORS = {
         "anchor": "Utility Company",
         "page_hint": -2,  # Second to last page
         "dx": 0,
-        "dy": 25  # Moved up from 30 to 25 for better alignment
+        "dy": 20  # Aligned with service address
     },
     "exhibit_account_name": {
         "anchor": "Name on Utility Account",
         "page_hint": -2,
         "dx": 0,
-        "dy": 25  # Moved up from 30 to 25
+        "dy": 20  # Aligned with service address
     },
     "exhibit_account_number": {
         "anchor": "Utility Account Number",
         "page_hint": -2,
         "dx": 0,
-        "dy": 25  # Moved up from 30 to 25
+        "dy": 20  # Aligned with service address
     },
     "exhibit_service_address": {
         "anchor": "Service Address",
         "page_hint": -2,
-        "dx": -140,  # Position text around X=465, safely in the column
-        "dy": 25,  # Moved up from 30 to 25
+        "dx": -45,  # Place at x=560.6, just inside the column (554.6 left edge)
+        "dy": 20,  # Moved up to align better with other fields
         "multi_line": True  # Flag for multi-line handling
     }
 }
