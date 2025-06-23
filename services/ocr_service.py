@@ -4,7 +4,7 @@ from .vision_ocr_service import process_utility_bill_with_vision
 
 # Legacy Tesseract functions removed - now using Google Vision API
 
-def process_utility_bill(file_path, service_account_info):
+def process_utility_bill(file_path, service_account_info, progress_callback=None):
     try:
         print(f"🔍 DEBUG: Processing file: {file_path}")
         print(f"🔍 DEBUG: File exists: {os.path.exists(file_path)}")

@@ -223,20 +223,123 @@ PDF Field → Data Source:
 3. Mass Market fields: `customer_info_address/city/state/zip` - Updated to use OCR data ✅
 4. Exhibit 1: `exhibit_service_address` - Already using OCR with fallback ✅
 
-### Issue 7: Exhibit 1 Field Truncation ✅ FIXED (June 23, 2025)
-**Problem:** Account number showing as "1" and service address getting cut off in Exhibit 1
-**Root Cause:** Service Address column header at X=605.6 with only 6 points before page edge
-**Solution:** Implemented multi-line text rendering for Exhibit 1 service address:
-- Adjusted dx offset to -185 to place text at start of Service Address column (X=420.6)
-- Multi-line text wrapping for addresses longer than 170 points width
-- 8pt font size for all Exhibit 1 fields
-- Maximum 3 lines for service address to stay within cell height
+### Issue 7: Exhibit 1 Service Address Truncation 🔴 CRITICAL BLOCKING ISSUE (June 23, 2025)
 
-**Test Results:**
-- Generated 3 test PDFs with varying address lengths
-- Service address now placed at X=420.6 (start of column)
-- Long addresses wrap to multiple lines within cell boundaries
-- No overlap with other columns
+**Problem:** Service address in Exhibit 1 (page 10 of commercial agreements) is being severely truncated
+- Example: "195 MAIN ST, ONEONTA NY 13820" appears as "195 MAIN ST, O" or similar
+- Affects all commercial agreements (NYSEG, National Grid, RG&E)
+- Other Exhibit 1 fields (Utility, Account Name, Account Number) display correctly
+
+**Technical Context:**
+- Exhibit 1 is a table on the second-to-last page of commercial agreements
+- Table column boundaries (from analyze_exhibit1_layout.py):
+  - Utility Company: X=49.8 to X=218.0
+  - Name on Utility Account: X=218.0 to X=386.4
+  - Utility Account Number: X=386.4 to X=554.6
+  - Service Address: X=554.6 to X=722.8 (width: 168.2 points)
+- Service Address anchor position: X=605.6, Y=111.1
+- With dy=20 offset, text should appear at Y=131.1
+
+**Root Cause Analysis:**
+- Text is being clipped during PDF rendering/merging process
+- Not a simple positioning issue - text at X=560.6 with 7pt font should have ~48 points margin
+- Issue appears to be specific to how the anchor_pdf_processor creates and merges overlay PDFs
+- Direct PDF creation approach (test_direct_placement.py) WORKS without truncation
+
+**Attempted Solutions (All Failed):**
+
+1. **Positioning Adjustments (anchor_mappings.py):**
+   - dx=-45 (X=560.6) - Original setting, truncated
+   - dx=-100 (X=505.6) - Caused overlap with Account Number column
+   - dx=-80 (X=525.6) - Still truncated
+   - dx=-40 (X=565.6) - Still truncated
+   - dx=-35, -30, -25, -20, -15, -5, 0, +5 - All tested, all truncated
+
+2. **Multi-line Text Wrapping:**
+   - Implemented text wrapping with max_width=160, 155, 140, 120, 100
+   - Split address into multiple lines for long addresses
+   - Result: Still truncated, sometimes worse
+
+3. **Font Size Adjustments:**
+   - Default 8pt for Exhibit 1 fields
+   - Reduced to 7pt for service address
+   - Reduced to 6pt for service address
+   - Result: Still truncated at same point
+
+4. **PDF Generation Fixes:**
+   - Fixed page count mismatch (overlay had fewer pages than template)
+   - Ensured all 11 pages created in overlay
+   - Result: No improvement
+
+5. **Direct Text Placement:**
+   - Removed multi-line logic, used simple drawString()
+   - Fixed X position at 560.6 (bypassing dx calculation)
+   - Result: Still truncated
+
+**What DOES Work:**
+- **test_direct_placement.py** - Creates overlay with simple approach:
+  ```python
+  c = canvas.Canvas(overlay_path, pagesize=(792, 612))
+  # Create 9 blank pages
+  for i in range(9):
+      c.showPage()
+  # Page 10
+  c.setFont("Helvetica", 7)
+  c.drawString(560.6, 480.9, "195 MAIN ST, ONEONTA NY 13820")
+  c.showPage()
+  # Page 11
+  c.showPage()
+  c.save()
+  ```
+  This approach displays the FULL address without truncation
+
+- **exhibit1_direct_20250623_153014.pdf** - Used similar direct approach, worked perfectly
+
+**Key Differences Between Working and Failing Approaches:**
+1. Working: Creates simple overlay with exact page count
+2. Working: Uses basic canvas operations without complex calculations
+3. Working: Merges pages one at a time
+4. Failing: anchor_pdf_processor uses complex field_data_by_page structure
+5. Failing: Creates overlay differently with showPage() logic
+6. Failing: May have issues with page dimensions or coordinate systems
+
+**Files Involved:**
+- `/services/anchor_pdf_processor.py` - Main PDF processing logic
+- `/services/anchor_mappings.py` - Field positioning configuration
+- `/services/exhibit1_direct_handler.py` - Attempted direct handler (incomplete)
+- Test files created during debugging:
+  - test_direct_placement.py (WORKS)
+  - test_exhibit1_direct_approach.py (WORKS)
+  - Various other test files
+
+**Current State:**
+- Service address at dx=-40, font_size=6
+- Still truncating at ~13-14 characters
+- All other fields in Exhibit 1 work correctly
+- Issue is specific to Service Address field only
+
+**Recommended Next Steps:**
+1. **Option 1:** Implement special case for Exhibit 1 using direct approach
+   - Bypass anchor_pdf_processor for Exhibit 1 fields
+   - Use working code from test_direct_placement.py
+   
+2. **Option 2:** Debug anchor_pdf_processor overlay creation
+   - Compare byte-by-byte overlay PDFs from working vs failing approaches
+   - Check for clipping paths or masks in generated overlay
+   
+3. **Option 3:** Use alternative PDF library
+   - Try PyMuPDF or pdfplumber for merging
+   - May handle text rendering differently
+
+4. **Option 4:** Pre-process template
+   - Remove any form fields or annotations from Exhibit 1 area
+   - Ensure clean slate for text placement
+
+**Critical Information:**
+- This blocks all commercial agreement generation
+- Client has seen multiple failed attempts
+- Issue is NOT simple positioning - something deeper in PDF rendering
+- Working solution exists but needs to be integrated properly
 
 ## Deployment Ready
 All critical client feedback has been addressed and tested. The system is ready for production deployment.

@@ -14,13 +14,16 @@ The client can manage their entire business logic through simple Google Sheets -
 
 #### **What the Client Can Do Themselves:**
 1. **Add/Remove Utility Companies**: 
-   - Edit "Utilities" tab in Google Sheet
+   - Right now the client doesn't work with the utility companies: Orange & Rockland, Central Hudson, or ConEd. But he will in the future
+   - This gives him the ability to edit "Utilities" tab in Google Sheet
    - Set active_flag to TRUE (appears in dropdown) or FALSE (hidden)
-   - Changes appear on website within 15 minutes
+   - Changes appear on the form within 15 minutes
 
 2. **Add/Remove Solar Developers**:
-   - Add new rows to "Developer_Mapping" tab
-   - New developers automatically appear in form dropdown
+   - Right now the client only works with the solar developer Meadow
+   - But in the future he will also be working with Solar Simplified
+   - This setup allows him to: add a new row to "Developer_Mapping" tab
+   - Solar Simplified will automatically appear 
 
 3. **Manage Agreement Templates**:
    - Upload new PDF templates to Google Drive "Templates" folder

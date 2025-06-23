@@ -240,9 +240,9 @@ EXHIBIT_1_ANCHORS = {
     "exhibit_service_address": {
         "anchor": "Service Address",
         "page_hint": -2,
-        "dx": -45,  # Place at x=560.6, just inside the column (554.6 left edge)
+        "dx": -40,  # Place at x=565.6, slightly more to the right
         "dy": 20,  # Moved up to align better with other fields
-        "multi_line": True  # Flag for multi-line handling
+        "font_size": 6  # Smaller font to fit better
     }
 }
 
