@@ -15,9 +15,9 @@ class GoogleSheetsService:
         # 15-minute cache for sheet lookups
         self.cache = TTLCache(maxsize=32, ttl=900)
         
-        # Column indexes for formatting (0-based) - Updated for POID (OCR) and Service Address (OCR) columns
-        self.MONTHLY_USAGE_COL = 16   # Column Q - kWh format (+1 for new POID (OCR) column)
-        self.ANNUAL_USAGE_COL = 17    # Column R - kWh format (+1 for new POID (OCR) column)
+        # Column indexes for formatting (0-based) - Updated after removing form columns
+        self.MONTHLY_USAGE_COL = 15   # Column P - kWh format (shifted left by 2)
+        self.ANNUAL_USAGE_COL = 16    # Column Q - kWh format (shifted left by 2)
         
     def create_headers_if_needed(self):
         headers = [
@@ -35,13 +35,11 @@ class GoogleSheetsService:
             'Utility Provider (Form)',
             'Utility Name (OCR)',
             'Account Number (OCR)',
-            'POID (Form)',
-            'POID (OCR)',
+            'POID',
             'Monthly Usage (OCR)',
             'Annual Usage (OCR)',
             'Agent ID',
             'Agent Name',
-            'Service Address (OCR)',
             'POA ID',
             'Utility Bill Link',
             'POA Link',
@@ -52,7 +50,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:Z1'
+                range='A1:X1'
             ).execute()
             
             existing_values = result.get('values', [])
@@ -64,7 +62,7 @@ class GoogleSheetsService:
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range='A1:Z1',
+                    range='A1:X1',
                     valueInputOption='RAW',
                     body=body
                 ).execute()
@@ -119,7 +117,7 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Z',
+                range='A:X',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
@@ -250,7 +248,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Z'
+                range='A:X'
             ).execute()
             
             return result.get('values', [])

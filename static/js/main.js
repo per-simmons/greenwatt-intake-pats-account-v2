@@ -2,32 +2,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('intakeForm');
     const loading = document.getElementById('loading');
     const result = document.getElementById('result');
-    const utilityProvider = document.getElementById('utility_provider');
-    const poidField = document.getElementById('poid');
-    const poidRequired = document.getElementById('poid_required');
-    const poidHint = document.getElementById('poid_hint');
     
     // File upload elements
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('utility_bill');
     const fileInfo = document.getElementById('fileInfo');
     
-    // Handle POID requirement based on utility selection
-    utilityProvider.addEventListener('change', function() {
-        const requiresPOID = ['NYSEG', 'RG&E'].includes(this.value);
-        
-        if (requiresPOID) {
-            poidField.setAttribute('required', '');
-            poidRequired.style.display = 'inline';
-            poidHint.textContent = 'Point of Delivery ID (required for this utility)';
-            poidHint.style.color = '#d9534f';
-        } else {
-            poidField.removeAttribute('required');
-            poidRequired.style.display = 'none';
-            poidHint.textContent = 'Point of Delivery ID (optional)';
-            poidHint.style.color = '#666';
-        }
-    });
     
     // File upload functionality - unified single input system
     function setupFileUploads() {

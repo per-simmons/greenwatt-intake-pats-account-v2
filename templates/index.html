@@ -53,13 +53,7 @@
                 <input type="email" id="email" name="email" required>
             </div>
             
-            <!-- 8. Service Address(es) -->
-            <div class="form-group">
-                <label for="service_addresses">Service Address(es)*</label>
-                <textarea id="service_addresses" name="service_addresses" rows="3" required></textarea>
-            </div>
-            
-            <!-- 9. Utility (Updated dropdown with all utilities) -->
+            <!-- 8. Utility (Updated dropdown with all utilities) -->
             <div class="form-group">
                 <label for="utility_provider">Utility*</label>
                 <select id="utility_provider" name="utility_provider" required>
@@ -70,7 +64,7 @@
                 </select>
             </div>
             
-            <!-- 10. Account Type -->
+            <!-- 9. Account Type -->
             <div class="form-group">
                 <label for="account_type">Account Type*</label>
                 <select id="account_type" name="account_type" required>
@@ -81,7 +75,7 @@
                 </select>
             </div>
             
-            <!-- 11. Operator or Developer -->
+            <!-- 10. Operator or Developer -->
             <div class="form-group">
                 <label for="developer_assigned">Operator or Developer*</label>
                 <select id="developer_assigned" name="developer_assigned" required>
@@ -91,20 +85,17 @@
                 </select>
             </div>
             
-            <!-- POID field (kept for backend compatibility) -->
-            <div class="form-group">
-                <label for="poid">POID <span id="poid_required" style="display: none;">*</span></label>
-                <input type="text" id="poid" name="poid">
-                <small id="poid_hint">Point of Delivery ID (required for NYSEG and RG&E)</small>
-            </div>
-            
-            <!-- 12. Terms & Conditions and POA Checkbox -->
+            <!-- 11. Terms & Conditions and POA Checkbox -->
             <div class="form-group checkbox-group">
                 <input type="checkbox" id="poa_agreement" name="poa_agreement" required>
-                <label for="poa_agreement">I agree to Terms & Conditions and POA (Both GWUSA Solar Agency Agreement and POA)*</label>
+                <label for="poa_agreement">
+                    I agree to Terms & Conditions and POA 
+                    (Both <a href="/preview/agency-agreement" target="_blank" style="color: #2c5530; text-decoration: underline;">GWUSA Solar Agency Agreement</a> 
+                    and <a href="/preview/poa" target="_blank" style="color: #2c5530; text-decoration: underline;">POA</a>)*
+                </label>
             </div>
             
-            <!-- 13. Upload Bill Button -->
+            <!-- 12. Upload Bill Button -->
             <div class="form-group">
                 <label for="utility_bill">Upload Bill (JPEG or PDF)*</label>
                 

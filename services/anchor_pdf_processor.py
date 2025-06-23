@@ -526,6 +526,20 @@ class AnchorPDFProcessor:
                 # Phone field - use form phone
                 text_value = form_data.get('phone', '')
             
+            # Exhibit 1 - List of Utility Accounts (Commercial Agreements)
+            elif field_name == "exhibit_utility":
+                # Utility Company - use OCR or form utility name
+                text_value = ocr_data.get('utility_name', '') or form_data.get('utility_provider', '')
+            elif field_name == "exhibit_account_name":
+                # Name on Utility Account - use account name from form
+                text_value = form_data.get('account_name', '')
+            elif field_name == "exhibit_account_number":
+                # Utility Account Number - use OCR account number
+                text_value = ocr_data.get('account_number', '')
+            elif field_name == "exhibit_service_address":
+                # Service Address - use OCR service address with fallback to form
+                text_value = ocr_data.get('service_address', '') or form_data.get('service_addresses', '')
+            
             if text_value:
                 # Organize field data by page
                 if page_num not in field_data_by_page:

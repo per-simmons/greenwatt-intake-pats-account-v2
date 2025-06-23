@@ -212,6 +212,40 @@ def index():
 def test_dashboard():
     return render_template('test.html')
 
+@app.route('/sandbox')
+def sandbox():
+    """Sandbox environment for testing dynamic Google Sheets integration"""
+    try:
+        # Check if sandbox is enabled
+        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
+            return "Sandbox environment is not enabled", 404
+        
+        # Create sandbox-specific service instances
+        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
+        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
+        
+        if not sandbox_sheets_id or not sandbox_drive_id:
+            return "Sandbox environment not properly configured", 500
+        
+        # Create sandbox sheets service
+        sandbox_sheets_service = GoogleSheetsService(
+            SERVICE_ACCOUNT_INFO,
+            sandbox_sheets_id,
+            os.getenv('GOOGLE_AGENT_SHEETS_ID')  # Can share agent sheet
+        )
+        
+        # Get dynamic data from sandbox sheets
+        utilities = sandbox_sheets_service.get_active_utilities()
+        developers = sandbox_sheets_service.get_active_developers()
+        
+        return render_template('sandbox.html', 
+                             utilities=utilities, 
+                             developers=developers,
+                             is_sandbox=True)
+    except Exception as e:
+        print(f"Sandbox error: {e}")
+        return f"Sandbox error: {str(e)}", 500
+
 @app.route('/test-pixel-perfect')
 def test_pixel_perfect():
     return render_template('test_pixel_perfect.html')
@@ -1196,24 +1230,24 @@ def process_submission_background(session_id, form_data, file_path):
             form_data['title'],              # Title (F)
             form_data['phone'],              # Phone (G)
             form_data['email'],              # Email (H)
-            form_data['service_addresses'],  # Service Address (I)
+            ocr_data.get('service_address', form_data.get('service_addresses', '')),  # Service Address (OCR) (I) - Now using OCR
             form_data['developer_assigned'], # Developer Assigned (J)
             form_data['account_type'],       # Account Type (K)
             form_data['utility_provider'],  # Utility Provider (Form) (L)
             utility_name_final,             # Utility Name (OCR) (M)
             ocr_data.get('account_number', ''),  # Account Number (OCR) (N)
-            form_data.get('poid', ''),       # POID (Form) (O) - NEW
-            ocr_data.get('poid', ''),        # POID (OCR) (P) - MOVED from O
-            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR) (Q)
-            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR) (R)
-            form_data['agent_id'],           # Agent ID (S)
-            agent_name,                      # Agent Name (T)
-            ocr_data.get('service_address', ''),  # Service Address (OCR) (U) - NEW
-            poa_id_generated,                # POA ID (V)
-            utility_bill_link,              # Utility Bill Link (W)
-            poa_link,                        # POA Link (X)
-            agreement_link,                  # Agreement Link (Y)
-            agency_agreement_link              # Terms & Conditions Link (Z) - NEW
+            ocr_data.get('poid', form_data.get('poid', '')),        # POID (OCR) (O) - Now using OCR
+            # Column P removed (was POID Form)
+            ocr_data.get('monthly_usage', ''),   # Monthly Usage (OCR) (P) - shifted left
+            ocr_data.get('annual_usage', ''),    # Annual Usage (OCR) (Q) - shifted left
+            form_data['agent_id'],           # Agent ID (R) - shifted left
+            agent_name,                      # Agent Name (S) - shifted left
+            # Column T removed (was Service Address OCR duplicate)
+            poa_id_generated,                # POA ID (T) - shifted left
+            utility_bill_link,              # Utility Bill Link (U) - shifted left
+            poa_link,                        # POA Link (V) - shifted left
+            agreement_link,                  # Agreement Link (W) - shifted left
+            agency_agreement_link              # Terms & Conditions Link (X) - shifted left
         ]
         
         update_progress(session_id, 6, "Logging Data", "Writing to Google Sheets", 90)
@@ -1304,11 +1338,9 @@ def submit_form():
             'title': request.form.get('title'),
             'phone': request.form.get('phone'),
             'email': request.form.get('email'),
-            'service_addresses': request.form.get('service_addresses'),
             'developer_assigned': request.form.get('developer_assigned'),
             'account_type': request.form.get('account_type'),
             'utility_provider': request.form.get('utility_provider'),
-            'poid': request.form.get('poid', ''),
             'agent_id': request.form.get('agent_id'),
             'poa_agreement': request.form.get('poa_agreement') == 'on'
         }
@@ -2138,6 +2170,32 @@ def test_sms_webhook():
         </body>
         </html>
         '''
+
+@app.route('/preview/poa')
+def preview_poa():
+    """Serve the blank POA template for preview"""
+    try:
+        template_path = os.path.join('GreenWatt-documents', 'GreenWattUSA_Limited_Power_of_Attorney.pdf')
+        if os.path.exists(template_path):
+            from flask import send_file
+            return send_file(template_path, mimetype='application/pdf', as_attachment=False)
+        else:
+            return jsonify({'error': 'POA template not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/preview/agency-agreement')
+def preview_agency_agreement():
+    """Serve the blank Agency Agreement template for preview"""
+    try:
+        template_path = os.path.join('GreenWatt-documents', 'GreenWATT-USA-Inc-Communtiy-Solar-Agency-Agreement.pdf')
+        if os.path.exists(template_path):
+            from flask import send_file
+            return send_file(template_path, mimetype='application/pdf', as_attachment=False)
+        else:
+            return jsonify({'error': 'Agency Agreement template not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

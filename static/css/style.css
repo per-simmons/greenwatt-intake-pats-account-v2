@@ -231,6 +231,17 @@ small {
     flex: 1;
 }
 
+.checkbox-group label a {
+    color: #2c5530;
+    text-decoration: underline;
+    font-weight: normal;
+}
+
+.checkbox-group label a:hover {
+    color: #1a3320;
+    text-decoration: none;
+}
+
 /* Mobile-specific checkbox improvements */
 @media (max-width: 767px) {
     .checkbox-group {

@@ -216,12 +216,44 @@ MASS_MARKET_ANCHORS = {
     }
 }
 
+# Exhibit 1 anchors for Commercial Agreements
+# This is for the "List of Utility Accounts" table on the second to last page
+EXHIBIT_1_ANCHORS = {
+    "exhibit_utility": {
+        "anchor": "Utility Company",
+        "page_hint": -2,  # Second to last page
+        "dx": 0,
+        "dy": 25  # Moved up from 30 to 25 for better alignment
+    },
+    "exhibit_account_name": {
+        "anchor": "Name on Utility Account",
+        "page_hint": -2,
+        "dx": 0,
+        "dy": 25  # Moved up from 30 to 25
+    },
+    "exhibit_account_number": {
+        "anchor": "Utility Account Number",
+        "page_hint": -2,
+        "dx": 0,
+        "dy": 25  # Moved up from 30 to 25
+    },
+    "exhibit_service_address": {
+        "anchor": "Service Address",
+        "page_hint": -2,
+        "dx": 0,
+        "dy": 25  # Moved up from 30 to 25
+    }
+}
+
+# Commercial agreements need both UCB anchors and Exhibit 1 anchors
+COMMERCIAL_AGREEMENT_ANCHORS = {**UCB_COMMERCIAL_ANCHORS, **EXHIBIT_1_ANCHORS}
+
 # Template mapping to anchor configurations
 TEMPLATE_ANCHOR_MAP = {
     "GreenWattUSA_Limited_Power_of_Attorney.pdf": POA_ANCHORS,
-    "Meadow-National-Grid-Commercial-UCB-Agreement.pdf": UCB_COMMERCIAL_ANCHORS,
-    "Meadow-NYSEG-Commercial-UCB-Agreement.pdf": UCB_COMMERCIAL_ANCHORS,
-    "Meadow-RGE-Commercial-UCB-Agreement.pdf": UCB_COMMERCIAL_ANCHORS,
+    "Meadow-National-Grid-Commercial-UCB-Agreement.pdf": COMMERCIAL_AGREEMENT_ANCHORS,
+    "Meadow-NYSEG-Commercial-UCB-Agreement.pdf": COMMERCIAL_AGREEMENT_ANCHORS,
+    "Meadow-RGE-Commercial-UCB-Agreement.pdf": COMMERCIAL_AGREEMENT_ANCHORS,
     "Form-Subscription-Agreement-Mass Market UCB-Meadow-January 2023-002.pdf": MASS_MARKET_ANCHORS,
     "GreenWATT-USA-Inc-Communtiy-Solar-Agency-Agreement.pdf": UCB_COMMERCIAL_ANCHORS  # Agency agreement uses similar format
 }
