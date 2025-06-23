@@ -1158,7 +1158,19 @@ def process_submission_background(session_id, form_data, file_path):
             ocr_data = process_utility_bill(file_path, SERVICE_ACCOUNT_INFO)
             print(f"✅ OCR extraction successful: {json.dumps(ocr_data, indent=2)}")
         except Exception as ocr_error:
+            import traceback
+            error_details = traceback.format_exc()
             print(f"❌ OCR extraction failed: {str(ocr_error)}")
+            print(f"❌ Error type: {type(ocr_error).__name__}")
+            print(f"❌ Full traceback:\n{error_details}")
+            
+            # Log critical info for debugging
+            print(f"🔍 Debug info:")
+            print(f"   - File path: {file_path}")
+            print(f"   - File exists: {os.path.exists(file_path)}")
+            print(f"   - Service account configured: {'Yes' if SERVICE_ACCOUNT_INFO else 'No'}")
+            print(f"   - OpenAI key configured: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
+            
             # Use empty OCR data to continue processing
             ocr_data = {
                 'utility_name': '',
@@ -2351,6 +2363,120 @@ def test_ocr():
         </html>
         '''
 
+@app.route('/verify-config')
+def verify_config():
+    """Verify production configuration for debugging"""
+    config_status = {
+        'google_service_account': False,
+        'openai_api': False,
+        'google_sheets': False,
+        'google_drive': False,
+        'sendgrid': False,
+        'twilio': False
+    }
+    
+    # Check Google Service Account
+    google_sa = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
+    if google_sa:
+        try:
+            sa_data = json.loads(google_sa)
+            config_status['google_service_account'] = True
+            config_status['google_project'] = sa_data.get('project_id', 'N/A')
+        except:
+            pass
+    
+    # Check OpenAI
+    openai_key = os.getenv('OPENAI_API_KEY')
+    if openai_key and openai_key.startswith('sk-'):
+        config_status['openai_api'] = True
+    
+    # Check Google Sheets
+    if os.getenv('GOOGLE_SHEETS_ID'):
+        config_status['google_sheets'] = True
+    
+    # Check Google Drive
+    if os.getenv('GOOGLE_DRIVE_PARENT_FOLDER_ID'):
+        config_status['google_drive'] = True
+    
+    # Check SendGrid
+    if os.getenv('SENDGRID_API_KEY'):
+        config_status['sendgrid'] = True
+    
+    # Check Twilio
+    if os.getenv('TWILIO_ACCOUNT_SID') and os.getenv('TWILIO_AUTH_TOKEN'):
+        config_status['twilio'] = True
+    
+    # Generate HTML response
+    html = '''
+    <html>
+    <head>
+        <title>Configuration Status</title>
+        <style>
+            body { font-family: Arial; padding: 20px; }
+            .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+            .ok { background: #d4edda; color: #155724; }
+            .error { background: #f8d7da; color: #721c24; }
+            .warning { background: #fff3cd; color: #856404; }
+        </style>
+    </head>
+    <body>
+        <h1>🔍 GreenWatt Configuration Status</h1>
+    '''
+    
+    # Critical for OCR
+    html += '<h2>Critical for OCR:</h2>'
+    
+    if config_status['google_service_account']:
+        html += f'<div class="status ok">✅ Google Service Account: Configured (Project: {config_status.get("google_project", "Unknown")})</div>'
+    else:
+        html += '<div class="status error">❌ Google Service Account: NOT CONFIGURED - Vision API will fail!</div>'
+    
+    if config_status['openai_api']:
+        html += '<div class="status ok">✅ OpenAI API Key: Configured</div>'
+    else:
+        html += '<div class="status error">❌ OpenAI API Key: NOT CONFIGURED - LLM parsing will fail!</div>'
+    
+    # Other services
+    html += '<h2>Other Services:</h2>'
+    
+    if config_status['google_sheets']:
+        html += '<div class="status ok">✅ Google Sheets: Configured</div>'
+    else:
+        html += '<div class="status warning">⚠️ Google Sheets: Not configured</div>'
+    
+    if config_status['google_drive']:
+        html += '<div class="status ok">✅ Google Drive: Configured</div>'
+    else:
+        html += '<div class="status warning">⚠️ Google Drive: Not configured</div>'
+    
+    if config_status['sendgrid']:
+        html += '<div class="status ok">✅ SendGrid: Configured</div>'
+    else:
+        html += '<div class="status warning">⚠️ SendGrid: Not configured (emails won\'t send)</div>'
+    
+    if config_status['twilio']:
+        html += '<div class="status ok">✅ Twilio: Configured</div>'
+    else:
+        html += '<div class="status warning">⚠️ Twilio: Not configured (SMS won\'t work)</div>'
+    
+    # Summary
+    ocr_ready = config_status['google_service_account'] and config_status['openai_api']
+    if ocr_ready:
+        html += '<h2 style="color: green;">✅ OCR should work properly!</h2>'
+    else:
+        html += '<h2 style="color: red;">❌ OCR will NOT work - missing critical configuration!</h2>'
+        html += '<p>Add the missing environment variables in Render.com:</p>'
+        html += '<ol>'
+        html += '<li>Go to your service dashboard</li>'
+        html += '<li>Click on "Environment" tab</li>'
+        html += '<li>Add GOOGLE_SERVICE_ACCOUNT_JSON and/or OPENAI_API_KEY</li>'
+        html += '<li>Redeploy the service</li>'
+        html += '</ol>'
+    
+    html += '</body></html>'
+    
+    return html
+
 @app.route('/test-sms-webhook', methods=['GET', 'POST'])
 def test_sms_webhook():
     """Test endpoint to simulate Twilio webhook for development"""
@@ -2441,6 +2567,206 @@ def preview_agency_agreement():
             return jsonify({'error': 'Agency Agreement template not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/verify-config')
+def verify_config():
+    """Web endpoint to verify production configuration"""
+    import subprocess
+    
+    try:
+        # Run the verification script and capture output
+        result = subprocess.run(
+            ['python', 'verify_production_config.py'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        output = result.stdout if result.returncode == 0 else result.stderr
+        
+        # Convert ANSI output to HTML formatting
+        html_output = output.replace('\n', '<br>')
+        html_output = html_output.replace('✅', '<span style="color: green;">✅</span>')
+        html_output = html_output.replace('❌', '<span style="color: red;">❌</span>')
+        html_output = html_output.replace('⚠️', '<span style="color: orange;">⚠️</span>')
+        html_output = html_output.replace('🔍', '🔍')
+        html_output = html_output.replace('📋', '📋')
+        html_output = html_output.replace('💡', '💡')
+        html_output = html_output.replace('=' * 50, '<hr>')
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Configuration Verification</title>
+            <style>
+                body {{
+                    font-family: 'Courier New', monospace;
+                    background-color: #f5f5f5;
+                    padding: 20px;
+                    line-height: 1.6;
+                }}
+                .container {{
+                    background-color: white;
+                    padding: 30px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    max-width: 800px;
+                    margin: 0 auto;
+                }}
+                h1 {{
+                    color: #333;
+                    border-bottom: 2px solid #4CAF50;
+                    padding-bottom: 10px;
+                }}
+                .output {{
+                    background-color: #f8f8f8;
+                    padding: 20px;
+                    border-radius: 5px;
+                    border: 1px solid #ddd;
+                    white-space: pre-wrap;
+                }}
+                .back-link {{
+                    margin-top: 20px;
+                    display: inline-block;
+                    padding: 10px 20px;
+                    background-color: #4CAF50;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                }}
+                .back-link:hover {{
+                    background-color: #45a049;
+                }}
+                hr {{
+                    border: none;
+                    border-top: 1px solid #ddd;
+                    margin: 15px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔧 Production Configuration Verification</h1>
+                <div class="output">{html_output}</div>
+                <a href="/" class="back-link">← Back to Home</a>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Configuration Verification Error</title>
+        </head>
+        <body style="font-family: Arial; padding: 20px;">
+            <h1>❌ Verification Error</h1>
+            <p style="color: red;">Error running verification: {str(e)}</p>
+            <p>Make sure verify_production_config.py exists in the application directory.</p>
+            <a href="/">← Back to Home</a>
+        </body>
+        </html>
+        ''', 500
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint that verifies all critical dependencies"""
+    import subprocess
+    
+    health_status = {
+        'status': 'healthy',
+        'checks': {},
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # Check Python packages
+    try:
+        import pdf2image
+        health_status['checks']['pdf2image'] = {'status': 'ok', 'message': 'Module imported successfully'}
+    except ImportError as e:
+        health_status['checks']['pdf2image'] = {'status': 'error', 'message': str(e)}
+        health_status['status'] = 'unhealthy'
+    
+    # Check system dependencies
+    try:
+        result = subprocess.run(['which', 'pdftoppm'], capture_output=True, text=True)
+        if result.returncode == 0:
+            health_status['checks']['poppler'] = {'status': 'ok', 'message': f'Found at: {result.stdout.strip()}'}
+        else:
+            health_status['checks']['poppler'] = {'status': 'error', 'message': 'pdftoppm not found in PATH'}
+            health_status['status'] = 'unhealthy'
+    except Exception as e:
+        health_status['checks']['poppler'] = {'status': 'error', 'message': str(e)}
+        health_status['status'] = 'unhealthy'
+    
+    # Check API configurations
+    health_status['checks']['google_service_account'] = {
+        'status': 'ok' if SERVICE_ACCOUNT_INFO else 'error',
+        'message': 'Configured' if SERVICE_ACCOUNT_INFO else 'Not configured'
+    }
+    
+    health_status['checks']['openai_api_key'] = {
+        'status': 'ok' if os.getenv('OPENAI_API_KEY') else 'error',
+        'message': 'Configured' if os.getenv('OPENAI_API_KEY') else 'Not configured'
+    }
+    
+    # Test PDF processing capability
+    try:
+        from pdf2image import convert_from_path
+        # Try to import without actually converting
+        health_status['checks']['pdf_processing'] = {'status': 'ok', 'message': 'PDF processing available'}
+    except Exception as e:
+        health_status['checks']['pdf_processing'] = {'status': 'error', 'message': str(e)}
+        health_status['status'] = 'unhealthy'
+    
+    # Return appropriate status code
+    status_code = 200 if health_status['status'] == 'healthy' else 503
+    return jsonify(health_status), status_code
+
+@app.route('/test-ocr-simple')
+def test_ocr_simple():
+    """Simple test endpoint to verify OCR is working"""
+    try:
+        # Check if we have test files
+        test_files = [
+            '/Volumes/Pat Samsung/Client/Upwork/Fulfillment 2025/GreenWatt_Clean_Repo/GreenWatt-documents/sample-documents/Sample-Bills-greenwatt/utility_bill_20250619_193755.pdf',
+            'uploads/20250618_185747_IMG_6712.jpeg'
+        ]
+        
+        available_file = None
+        for test_file in test_files:
+            if os.path.exists(test_file):
+                available_file = test_file
+                break
+        
+        if not available_file:
+            return jsonify({
+                'success': False,
+                'error': 'No test files available',
+                'message': 'Upload a utility bill through the main form first'
+            }), 404
+        
+        # Try OCR processing
+        ocr_result = process_utility_bill(available_file, SERVICE_ACCOUNT_INFO)
+        
+        return jsonify({
+            'success': True,
+            'file': available_file,
+            'ocr_result': ocr_result,
+            'message': 'OCR processing successful!'
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'message': 'OCR processing failed'
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

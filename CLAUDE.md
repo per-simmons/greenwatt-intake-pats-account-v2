@@ -109,6 +109,14 @@ Customer verification SMS is triggered immediately after form submission:
 
 ## Environment Configuration
 
+### System Dependencies
+The application requires the following system packages:
+- **poppler-utils**: Required for PDF to image conversion (used by pdf2image Python package)
+  - Production: Automatically installed via render.yaml buildCommand
+  - Local Ubuntu/Debian: `sudo apt-get install -y poppler-utils`
+  - Local macOS: `brew install poppler`
+  - Local Windows: Download from https://github.com/oschwartz10612/poppler-windows/releases/
+
 ### Required Environment Variables
 ```bash
 # Google Cloud
@@ -308,7 +316,28 @@ When `test_utility_bill` appears in filename or processing fails, the system ret
 
 - Pat will always start the server.
 
-## GitHub Repository Management
+## GitHub Contribution Guidelines
 
-- Push changes to the GitHub repository at [greenwatt-intake-pats-account-v2](https://github.com/per-simmons/greenwatt-intake-pats-account-v2) once instructed to "push changes."
-- Note: This repository address will eventually change to the client's own repository.
+**Repository**: [greenwatt-intake-pats-account-v2](https://github.com/per-simmons/greenwatt-intake-pats-account-v2)
+
+### Important Guidelines for Git Commits:
+- **NEVER** include "Co-authored-by: Claude" in commit messages
+- **NEVER** list Claude as a contributor in any capacity
+- All commits should be attributed solely to the human developer
+- Use standard commit message format without any AI attribution
+
+### Commit Message Format:
+```bash
+# ✅ CORRECT - Clean commit without AI attribution
+git commit -m "Add SMS verification workflow to intake form"
+
+# ❌ INCORRECT - Never include Claude attribution
+git commit -m "Add SMS verification workflow to intake form
+
+Co-authored-by: Claude <claude@anthropic.com>"
+```
+
+### Repository Access:
+- Push changes to the GitHub repository when instructed to "push changes"
+- Note: This repository address will eventually change to the client's own repository
+
