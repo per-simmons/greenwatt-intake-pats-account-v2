@@ -58,9 +58,16 @@
                 <label for="utility_provider">Utility*</label>
                 <select id="utility_provider" name="utility_provider" required>
                     <option value="">Select Utility</option>
-                    <option value="National Grid">National Grid</option>
-                    <option value="NYSEG">NYSEG</option>
-                    <option value="RG&E">RG&E</option>
+                    {% if utilities %}
+                        {% for utility in utilities %}
+                        <option value="{{ utility }}">{{ utility }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Fallback if no dynamic data -->
+                        <option value="National Grid">National Grid</option>
+                        <option value="NYSEG">NYSEG</option>
+                        <option value="RG&E">RG&E</option>
+                    {% endif %}
                 </select>
             </div>
             
@@ -80,8 +87,15 @@
                 <label for="developer_assigned">Operator or Developer*</label>
                 <select id="developer_assigned" name="developer_assigned" required>
                     <option value="">Select Operator/Developer</option>
-                    <option value="Meadow Energy">Meadow Energy</option>
-                    <option value="Solar Simplified">Solar Simplified</option>
+                    {% if developers %}
+                        {% for developer in developers %}
+                        <option value="{{ developer }}">{{ developer }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Fallback if no dynamic data -->
+                        <option value="Meadow Energy">Meadow Energy</option>
+                        <option value="Solar Simplified">Solar Simplified</option>
+                    {% endif %}
                 </select>
             </div>
             
