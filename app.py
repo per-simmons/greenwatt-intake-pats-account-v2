@@ -49,6 +49,18 @@ sheets_service = GoogleSheetsService(
     os.getenv('GOOGLE_SHEETS_ID'),
     os.getenv('GOOGLE_AGENT_SHEETS_ID')
 )
+
+# Create global dynamic sheets service instance (memory optimization)
+dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
+if dynamic_sheets_id:
+    dynamic_sheets_service = GoogleSheetsService(
+        SERVICE_ACCOUNT_INFO, 
+        dynamic_sheets_id,
+        os.getenv('GOOGLE_AGENT_SHEETS_ID')
+    )
+else:
+    dynamic_sheets_service = None
+
 sms_service = SMSService()
 
 # Initialize Google Sheets structure on startup
@@ -198,22 +210,15 @@ def get_progress(session_id):
 @app.route('/')
 def index():
     try:
-        # Create dynamic sheets service instance
-        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
-        if dynamic_sheets_id:
-            dynamic_sheets_service = GoogleSheetsService(
-                SERVICE_ACCOUNT_INFO, 
-                dynamic_sheets_id,
-                os.getenv('GOOGLE_AGENT_SHEETS_ID')
-            )
-            
+        # Use global dynamic sheets service (memory optimization)
+        if dynamic_sheets_service:
             # Get dynamic data from Dynamic Form Revisions Google Sheet
             utilities = dynamic_sheets_service.get_active_utilities()
             developers = dynamic_sheets_service.get_active_developers()
             
             return render_template('index.html', utilities=utilities, developers=developers)
         else:
-            raise Exception("Dynamic sheets ID not configured")
+            raise Exception("Dynamic sheets service not configured")
             
     except Exception as e:
         print(f"Error loading dynamic data: {e}")
@@ -1525,13 +1530,8 @@ def process_submission_background(session_id, form_data, file_path):
         dynamic_drive_id = os.getenv('DYNAMIC_GOOGLE_DRIVE_FOLDER_ID')
         
         if dynamic_sheets_id and dynamic_drive_id:
-            # Create dynamic services
+            # Use global dynamic service (memory optimization)
             dynamic_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, dynamic_drive_id)
-            dynamic_sheets_service = GoogleSheetsService(
-                SERVICE_ACCOUNT_INFO, 
-                dynamic_sheets_id,
-                os.getenv('GOOGLE_AGENT_SHEETS_ID')
-            )
             
             agreement_filename = dynamic_sheets_service.get_developer_agreement(
                 form_data['developer_assigned'], 
@@ -1803,14 +1803,8 @@ def dynamic_test():
             </ul>
         '''
         
-        if dynamic_sheets_id:
+        if dynamic_sheets_service:
             try:
-                # Create dynamic sheets service
-                dynamic_sheets_service = GoogleSheetsService(
-                    SERVICE_ACCOUNT_INFO,
-                    dynamic_sheets_id,
-                    os.getenv('GOOGLE_AGENT_SHEETS_ID')
-                )
                 
                 # Test utilities retrieval
                 utilities = dynamic_sheets_service.get_active_utilities()
@@ -1977,16 +1971,9 @@ def dynamic_test():
 def dynamic_cache_manager():
     """Cache management page - view current cache without clearing"""
     try:
-        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
-        if not dynamic_sheets_id:
+        # Use global dynamic sheets service (memory optimization)
+        if not dynamic_sheets_service:
             return "Dynamic sheets not configured", 500
-        
-        # Create dynamic sheets service (don't clear cache yet)
-        dynamic_sheets_service = GoogleSheetsService(
-            SERVICE_ACCOUNT_INFO,
-            dynamic_sheets_id,
-            os.getenv('GOOGLE_AGENT_SHEETS_ID')
-        )
         
         # Get current cached data
         utilities = dynamic_sheets_service.get_active_utilities()
@@ -2046,16 +2033,9 @@ def dynamic_cache_manager():
 def dynamic_clear_cache_now():
     """Actually clear the cache and show results"""
     try:
-        dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
-        if not dynamic_sheets_id:
+        # Use global dynamic sheets service (memory optimization)
+        if not dynamic_sheets_service:
             return "Dynamic sheets not configured", 500
-        
-        # Create dynamic sheets service and clear cache
-        dynamic_sheets_service = GoogleSheetsService(
-            SERVICE_ACCOUNT_INFO,
-            dynamic_sheets_id,
-            os.getenv('GOOGLE_AGENT_SHEETS_ID')
-        )
         
         dynamic_sheets_service.clear_cache()
         

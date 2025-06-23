@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenWatt Intake System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>GreenWatt Solar Intake Form</h1>
+        
+        <form id="intakeForm" enctype="multipart/form-data">
+            <!-- 1. Agent ID -->
+            <div class="form-group">
+                <label for="agent_id">Agent ID*</label>
+                <input type="text" id="agent_id" name="agent_id" required>
+            </div>
+            
+            <!-- 2. Legal Business Entity Name (Not Required) -->
+            <div class="form-group">
+                <label for="business_entity">Legal Business Entity Name</label>
+                <input type="text" id="business_entity" name="business_entity" placeholder="Optional - if different from Account Name">
+            </div>
+            
+            <!-- 3. Account Name (as shown on the utility bill) -->
+            <div class="form-group">
+                <label for="account_name">Account Name (as shown on the utility bill)*</label>
+                <input type="text" id="account_name" name="account_name" required>
+            </div>
+            
+            <!-- 4. Contact Full Name -->
+            <div class="form-group">
+                <label for="contact_name">Contact Full Name*</label>
+                <input type="text" id="contact_name" name="contact_name" required>
+            </div>
+            
+            <!-- 5. Contact Title -->
+            <div class="form-group">
+                <label for="title">Contact Title*</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <!-- 6. Contact Phone Number -->
+            <div class="form-group">
+                <label for="phone">Contact Phone Number*</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+            
+            <!-- 7. Contact Email Address -->
+            <div class="form-group">
+                <label for="email">Contact Email Address*</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <!-- 8. Utility (Updated dropdown with all utilities) -->
+            <div class="form-group">
+                <label for="utility_provider">Utility*</label>
+                <select id="utility_provider" name="utility_provider" required>
+                    <option value="">Select Utility</option>
+                    <option value="National Grid">National Grid</option>
+                    <option value="NYSEG">NYSEG</option>
+                    <option value="RG&E">RG&E</option>
+                </select>
+            </div>
+            
+            <!-- 9. Account Type -->
+            <div class="form-group">
+                <label for="account_type">Account Type*</label>
+                <select id="account_type" name="account_type" required>
+                    <option value="">Select Account Type</option>
+                    <option value="Small Demand <25 KW">Small Demand &lt;25 KW</option>
+                    <option value="Large Demand >25 KW">Large Demand &gt;25 KW</option>
+                    <option value="Mass Market [Residential]">Mass Market [Residential]</option>
+                </select>
+            </div>
+            
+            <!-- 10. Operator or Developer -->
+            <div class="form-group">
+                <label for="developer_assigned">Operator or Developer*</label>
+                <select id="developer_assigned" name="developer_assigned" required>
+                    <option value="">Select Operator/Developer</option>
+                    <option value="Meadow Energy">Meadow Energy</option>
+                    <option value="Solar Simplified">Solar Simplified</option>
+                </select>
+            </div>
+            
+            <!-- 11. Terms & Conditions and POA Checkbox -->
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="poa_agreement" name="poa_agreement" required>
+                <label for="poa_agreement">
+                    I agree to Terms & Conditions and POA 
+                    (Both <a href="/preview/agency-agreement" target="_blank" style="color: #2c5530; text-decoration: underline;">GWUSA Solar Agency Agreement</a> 
+                    and <a href="/preview/poa" target="_blank" style="color: #2c5530; text-decoration: underline;">POA</a>)*
+                </label>
+            </div>
+            
+            <!-- 12. Upload Bill Button -->
+            <div class="form-group">
+                <label for="utility_bill">Upload Bill (JPEG or PDF)*</label>
+                
+                <!-- Universal file input with responsive styling -->
+                <div class="upload-container">
+                    <input type="file" id="utility_bill" name="utility_bill" accept="image/*,.pdf,.jpg,.jpeg,.png" required class="file-input-hidden">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text mobile-text">Choose File</div>
+                        <div class="upload-text desktop-text">Drag & drop your utility bill here</div>
+                        <div class="upload-subtext mobile-subtext">Tap to select from camera or photos</div>
+                        <div class="upload-subtext desktop-subtext">or <strong>click to browse</strong></div>
+                    </div>
+                </div>
+                
+                <div id="fileInfo" class="file-info" style="display: none;"></div>
+                <small>Upload JPEG or PDF</small>
+            </div>
+            
+            <button type="submit" class="submit-btn">Submit Application</button>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-header">
+                    <div class="spinner"></div>
+                    <h3>Processing Your Submission</h3>
+                    <p class="loading-subtitle">This usually takes 1-2 minutes. Please don't close this window.</p>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+                
+                <div class="progress-details">
+                    <div id="progressStep" class="progress-step">Starting...</div>
+                    <div id="progressDescription" class="progress-description">Initializing your submission</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

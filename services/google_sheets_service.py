@@ -12,8 +12,8 @@ class GoogleSheetsService:
         self.spreadsheet_id = spreadsheet_id
         self.agent_spreadsheet_id = agent_spreadsheet_id or spreadsheet_id
         
-        # 15-minute cache for sheet lookups
-        self.cache = TTLCache(maxsize=32, ttl=900)
+        # 10-minute cache for sheet lookups (smaller for memory efficiency)
+        self.cache = TTLCache(maxsize=16, ttl=600)
         
         # Column indexes for formatting (0-based) - Updated after removing form columns
         self.MONTHLY_USAGE_COL = 15   # Column P - kWh format (shifted left by 2)
