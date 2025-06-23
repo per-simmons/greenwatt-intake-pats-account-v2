@@ -15,6 +15,8 @@ from services.google_sheets_service import GoogleSheetsService
 from services.email_service import send_notification_email
 from services.sms_service import SMSService
 from dotenv import load_dotenv
+import gc
+import psutil
 
 load_dotenv()
 
@@ -123,7 +125,7 @@ def update_progress(session_id, step, step_name, step_description, percentage=No
     print(f"Progress {session_id}: Step {step}/7 - {step_name} ({percentage}%)")
 
 def complete_progress(session_id, success=True, error=None):
-    """Mark progress as completed"""
+    """Mark progress as completed and clean up memory"""
     if session_id not in progress_sessions:
         return
     
@@ -135,17 +137,56 @@ def complete_progress(session_id, success=True, error=None):
     if success:
         session['step_name'] = 'Complete'
         session['step_description'] = 'Submission processed successfully'
+    
+    # Clean up result data to save memory (keep only essential info)
+    if 'result' in session:
+        # Keep only the IDs for reference, remove large data
+        if isinstance(session['result'], dict):
+            session['result'] = {
+                'poa_id': session['result'].get('poa_id'),
+                'unique_id': session['result'].get('unique_id')
+            }
+    
+    # Mark session for early cleanup (2 minutes instead of 10)
+    session['cleanup_time'] = time.time() + 120  # 2 minutes
 
 def cleanup_old_sessions():
-    """Remove old progress sessions (older than 10 minutes)"""
+    """Remove old progress sessions and enforce memory limits"""
     current_time = time.time()
     to_remove = []
+    
+    # First pass: Remove old sessions
     for session_id, session in progress_sessions.items():
-        if current_time - session['start_time'] > 600:  # 10 minutes
+        # Remove if older than 5 minutes OR if marked for cleanup
+        cleanup_time = session.get('cleanup_time', session['start_time'] + 300)
+        if current_time > cleanup_time:
+            to_remove.append(session_id)
+        # Also remove if session is older than 10 minutes regardless
+        elif current_time - session['start_time'] > 600:
             to_remove.append(session_id)
     
+    # Remove identified sessions
     for session_id in to_remove:
         del progress_sessions[session_id]
+    
+    # Second pass: Enforce maximum session limit (keep newest 100)
+    if len(progress_sessions) > 100:
+        # Sort by start time and keep only the newest 100
+        sorted_sessions = sorted(progress_sessions.items(), 
+                               key=lambda x: x[1]['start_time'], 
+                               reverse=True)
+        progress_sessions.clear()
+        progress_sessions.update(dict(sorted_sessions[:100]))
+    
+    # Log memory status
+    try:
+        process = psutil.Process(os.getpid())
+        memory_mb = process.memory_info().rss / 1024 / 1024
+        if memory_mb > 400:  # Warning at 400MB
+            print(f"⚠️ High memory usage: {memory_mb:.1f}MB - forcing garbage collection")
+            gc.collect()
+    except:
+        pass
 
 @app.route('/progress/<session_id>')
 def get_progress(session_id):
@@ -1708,11 +1749,18 @@ def process_submission_background(session_id, form_data, file_path):
         # Complete successfully
         complete_progress(session_id, success=True)
         
+        # Force garbage collection after submission completes
+        gc.collect()
+        print("♻️  Garbage collection performed after submission")
+        
     except Exception as e:
         print(f"Background processing error: {e}")
         import traceback
         traceback.print_exc()
         complete_progress(session_id, success=False, error=str(e))
+        
+        # Force garbage collection even on error to free memory
+        gc.collect()
 
 
 @app.route('/submit', methods=['POST'])
@@ -3115,6 +3163,30 @@ def test_ocr_simple():
             'traceback': traceback.format_exc(),
             'message': 'OCR processing failed'
         }), 500
+
+# Background cleanup thread
+def automatic_cleanup():
+    """Run cleanup every 60 seconds"""
+    while True:
+        try:
+            time.sleep(60)  # Run every minute
+            cleanup_old_sessions()
+            
+            # Log memory status every 5 minutes
+            if int(time.time()) % 300 < 60:
+                try:
+                    process = psutil.Process(os.getpid())
+                    memory_mb = process.memory_info().rss / 1024 / 1024
+                    print(f"📊 Memory usage: {memory_mb:.1f}MB | Sessions: {len(progress_sessions)}")
+                except:
+                    pass
+        except Exception as e:
+            print(f"Error in automatic cleanup: {e}")
+
+# Start background cleanup thread
+cleanup_thread = threading.Thread(target=automatic_cleanup, daemon=True)
+cleanup_thread.start()
+print("✅ Started automatic memory cleanup thread")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

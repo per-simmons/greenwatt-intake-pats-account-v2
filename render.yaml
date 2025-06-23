@@ -3,7 +3,7 @@ services:
     name: greenwatt-intake-system
     runtime: python
     buildCommand: "apt-get update && apt-get install -y poppler-utils && pip install -r requirements.txt"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --max-requests 500 --max-requests-jitter 50"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
