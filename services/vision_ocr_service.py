@@ -92,28 +92,6 @@ class VisionOCRService:
     
     def _fallback_pdf_to_images(self, pdf_path):
         """Fallback method: convert PDF pages to images and process with Vision"""
-        import signal
-        import functools
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("PDF conversion timed out")
-        
-        def with_timeout(timeout_seconds):
-            def decorator(func):
-                @functools.wraps(func)
-                def wrapper(*args, **kwargs):
-                    # Set the timeout handler
-                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                    signal.alarm(timeout_seconds)
-                    try:
-                        return func(*args, **kwargs)
-                    finally:
-                        # Restore the old handler and cancel the alarm
-                        signal.alarm(0)
-                        signal.signal(signal.SIGALRM, old_handler)
-                return wrapper
-            return decorator
-        
         try:
             from pdf2image import convert_from_path
             print("Using fallback: PDF to images conversion")
@@ -126,18 +104,14 @@ class VisionOCRService:
                 print("PDF file too large (>50MB), skipping conversion")
                 return ""
             
-            @with_timeout(30)  # 30 second timeout
-            def convert_pdf():
-                # Convert PDF pages to images at lower DPI for better performance
-                # Specify poppler path for production environment
-                return convert_from_path(
-                    pdf_path, 
-                    dpi=150,  # Reduced from 300 for better performance
-                    poppler_path='/usr/bin'  # Explicit path for production
-                )
-            
-            print("Starting PDF conversion with timeout protection...")
-            pages = convert_pdf()
+            print("Starting PDF conversion...")
+            # Convert PDF pages to images at lower DPI for better performance
+            # Specify poppler path for production environment
+            pages = convert_from_path(
+                pdf_path, 
+                dpi=150,  # Reduced from 300 for better performance
+                poppler_path='/usr/bin'  # Explicit path for production
+            )
             print(f"Successfully converted PDF to {len(pages)} page(s)")
             
             full_text = ""
@@ -158,9 +132,6 @@ class VisionOCRService:
             print(f"PDF processing complete. Extracted {len(full_text)} characters")
             return full_text
             
-        except TimeoutError:
-            print("PDF conversion timed out after 30 seconds")
-            return ""
         except Exception as e:
             print(f"Fallback PDF processing error: {e}")
             import traceback

@@ -166,5 +166,55 @@ PDF Field → Data Source:
 5. **Document Preview**: Added routes and links for POA and Agency Agreement preview
 6. **Testing**: All components tested and verified working correctly
 
+## Current Issues to Address
+
+### Issue 4: PDF Processing Hang ✅ FIXED (June 23, 2025)
+**Problem:** PDF uploads hang indefinitely during conversion, causing 133-byte error responses
+**Root Cause:** `pdf2image.convert_from_path()` hanging without timeout protection
+**Solution:** 
+- Added 30-second timeout protection to prevent infinite hangs
+- Reduced DPI from 300→150 for better memory efficiency
+- Added explicit poppler_path='/usr/bin' for production environment
+- Added 50MB file size limit to prevent oversized PDF processing
+- Enhanced error logging with detailed traceback information
+
+**Test Results:**
+- Tested with problematic PDF: `utility_bill_20250619_193755.pdf` (553KB)
+- Processing time: ~15 seconds (previously hung indefinitely)
+- All documents generated successfully
+- Zero impact on JPEG/PNG processing
+
+### Issue 5: Poor Progress Bar UX 🔧 PENDING
+**Problem:** Progress bar stays stuck at 5% then jumps to 100%, not showing real-time progress
+**Root Cause:** No progress updates during long-running OCR and PDF processing steps
+**Impact:** Users think the system is frozen/broken during processing
+
+**Current Behavior:**
+- OCR processing (lines 1494-1521): No progress updates during ~10-15 seconds of processing
+- PDF generation: Limited progress updates during document creation
+- User sees "5% - OCR Analysis" for entire processing time
+
+**Proposed Solution:**
+1. Add intermediate progress updates during OCR processing:
+   - 25%: "Starting text recognition"
+   - 30%: "Processing PDF pages"
+   - 32%: "Analyzing document structure"
+   - 35%: "Text extraction complete"
+
+2. Add progress updates during PDF generation:
+   - More granular updates for each document being created
+   - Progress callbacks during template processing
+
+3. Add periodic "heartbeat" updates:
+   - Update percentage every 2-3 seconds during long operations
+   - Keep users engaged with changing descriptions
+
+**Priority:** Medium (UX improvement, not blocking functionality)
+**Estimated Effort:** 2-3 hours to implement proper progress tracking
+
 ## Deployment Ready
-All client feedback has been addressed and tested. The system is ready for production deployment.
+All critical client feedback has been addressed and tested. The system is ready for production deployment.
+
+**Known Minor Issues:**
+- Progress bar UX could be improved (non-blocking)
+- Agency Agreement filename typo: "Communtiy" instead of "Community"
