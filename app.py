@@ -513,6 +513,347 @@ def test_pdf_generation():
             'traceback': traceback.format_exc()
         }), 500
 
+# =================================================================
+# DIAGNOSTIC ENDPOINTS FOR OCR TROUBLESHOOTING
+# =================================================================
+
+@app.route('/test-poppler')
+def test_poppler():
+    """Test if poppler-utils is installed and accessible"""
+    try:
+        import subprocess
+        import os
+        
+        results = []
+        
+        # Test 1: Check if pdftoppm is available
+        try:
+            result = subprocess.run(['which', 'pdftoppm'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                results.append(f"✅ pdftoppm found at: {result.stdout.strip()}")
+            else:
+                results.append("❌ pdftoppm not found in PATH")
+        except Exception as e:
+            results.append(f"❌ Error checking pdftoppm: {e}")
+        
+        # Test 2: Check if pdftocairo is available
+        try:
+            result = subprocess.run(['which', 'pdftocairo'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                results.append(f"✅ pdftocairo found at: {result.stdout.strip()}")
+            else:
+                results.append("❌ pdftocairo not found in PATH")
+        except Exception as e:
+            results.append(f"❌ Error checking pdftocairo: {e}")
+        
+        # Test 3: Try to get poppler version
+        try:
+            result = subprocess.run(['pdftoppm', '-v'], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                results.append(f"✅ Poppler version: {result.stderr.strip()}")
+            else:
+                results.append("❌ Could not get poppler version")
+        except Exception as e:
+            results.append(f"❌ Error getting poppler version: {e}")
+        
+        # Test 4: Check if pdf2image can import
+        try:
+            import pdf2image
+            results.append(f"✅ pdf2image imported successfully (version: {pdf2image.__version__ if hasattr(pdf2image, '__version__') else 'unknown'})")
+        except ImportError as e:
+            results.append(f"❌ pdf2image import failed: {e}")
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Poppler Utils Test</title>
+            <style>
+                body {{ font-family: Arial; padding: 20px; background: #f5f5f5; }}
+                .container {{ background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: 0 auto; }}
+                .result {{ margin: 10px 0; padding: 10px; border-radius: 5px; background: #f8f8f8; }}
+                h1 {{ color: #333; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔧 Poppler Utils Diagnostic Test</h1>
+                <p>Testing if poppler-utils is properly installed for PDF processing...</p>
+                
+                <h2>Test Results:</h2>
+                {chr(10).join(f'<div class="result">{result}</div>' for result in results)}
+                
+                <p><a href="/" style="display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px;">← Back to Main</a></p>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f'''
+        <html>
+        <body style="font-family: Arial; padding: 20px;">
+            <h1>❌ Error Testing Poppler</h1>
+            <p>Error: {str(e)}</p>
+            <p><a href="/">← Back to Main</a></p>
+        </body>
+        </html>
+        '''
+
+@app.route('/test-pdf2image')
+def test_pdf2image():
+    """Test pdf2image functionality with a simple conversion"""
+    try:
+        import tempfile
+        import os
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        
+        results = []
+        
+        # Create a simple test PDF
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            temp_pdf_path = temp_pdf.name
+            
+        try:
+            # Generate a simple test PDF
+            c = canvas.Canvas(temp_pdf_path, pagesize=letter)
+            c.drawString(100, 750, "Test PDF for pdf2image conversion")
+            c.drawString(100, 700, "If you can see this, PDF generation works")
+            c.save()
+            results.append("✅ Created test PDF successfully")
+            
+            # Test pdf2image conversion
+            try:
+                from pdf2image import convert_from_path
+                results.append("✅ pdf2image imported successfully")
+                
+                # Try to convert the PDF
+                pages = convert_from_path(temp_pdf_path, dpi=150)
+                results.append(f"✅ PDF converted successfully - {len(pages)} page(s)")
+                
+                # Try to save first page as image
+                if pages:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_img:
+                        temp_img_path = temp_img.name
+                    
+                    pages[0].save(temp_img_path, 'PNG')
+                    img_size = os.path.getsize(temp_img_path)
+                    results.append(f"✅ Image saved successfully ({img_size} bytes)")
+                    
+                    # Clean up image
+                    os.unlink(temp_img_path)
+                
+            except Exception as pdf2img_error:
+                results.append(f"❌ pdf2image conversion failed: {pdf2img_error}")
+                import traceback
+                results.append(f"📋 Traceback: {traceback.format_exc()}")
+            
+        finally:
+            # Clean up test PDF
+            if os.path.exists(temp_pdf_path):
+                os.unlink(temp_pdf_path)
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>PDF2Image Test</title>
+            <style>
+                body {{ font-family: Arial; padding: 20px; background: #f5f5f5; }}
+                .container {{ background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: 0 auto; }}
+                .result {{ margin: 10px 0; padding: 10px; border-radius: 5px; background: #f8f8f8; white-space: pre-wrap; }}
+                h1 {{ color: #333; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📄 PDF2Image Conversion Test</h1>
+                <p>Testing if pdf2image can successfully convert PDFs to images...</p>
+                
+                <h2>Test Results:</h2>
+                {chr(10).join(f'<div class="result">{result}</div>' for result in results)}
+                
+                <p><a href="/" style="display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px;">← Back to Main</a></p>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        import traceback
+        return f'''
+        <html>
+        <body style="font-family: Arial; padding: 20px;">
+            <h1>❌ Error Testing PDF2Image</h1>
+            <p>Error: {str(e)}</p>
+            <pre>{traceback.format_exc()}</pre>
+            <p><a href="/">← Back to Main</a></p>
+        </body>
+        </html>
+        '''
+
+@app.route('/test-ocr-detailed')
+def test_ocr_detailed():
+    """Test OCR processing with detailed logging and error reporting"""
+    try:
+        results = []
+        
+        # Test 1: Check service account
+        try:
+            results.append(f"✅ Service account configured: {bool(SERVICE_ACCOUNT_INFO)}")
+            if SERVICE_ACCOUNT_INFO:
+                results.append(f"📋 Project ID: {SERVICE_ACCOUNT_INFO.get('project_id', 'N/A')}")
+                results.append(f"📋 Client Email: {SERVICE_ACCOUNT_INFO.get('client_email', 'N/A')}")
+        except Exception as e:
+            results.append(f"❌ Service account error: {e}")
+        
+        # Test 2: Check if a test PDF exists
+        test_pdf_path = None
+        try:
+            import os
+            upload_dir = app.config['UPLOAD_FOLDER']
+            if os.path.exists(upload_dir):
+                pdf_files = [f for f in os.listdir(upload_dir) if f.endswith('.pdf')]
+                if pdf_files:
+                    test_pdf_path = os.path.join(upload_dir, pdf_files[0])
+                    results.append(f"✅ Found test PDF: {pdf_files[0]}")
+                else:
+                    results.append("⚠️ No PDF files found in uploads folder")
+            else:
+                results.append("❌ Uploads folder not found")
+        except Exception as e:
+            results.append(f"❌ Error checking uploads: {e}")
+        
+        # Test 3: Try OCR processing if we have a test file
+        if test_pdf_path:
+            try:
+                from services.ocr_service import process_utility_bill
+                results.append("✅ OCR service imported successfully")
+                
+                results.append("🔍 Attempting OCR processing...")
+                ocr_result = process_utility_bill(test_pdf_path, SERVICE_ACCOUNT_INFO)
+                
+                if ocr_result:
+                    results.append(f"✅ OCR completed successfully")
+                    results.append(f"📋 Extracted fields: {list(ocr_result.keys())}")
+                    for key, value in ocr_result.items():
+                        results.append(f"  - {key}: {value}")
+                else:
+                    results.append("❌ OCR returned no results")
+                    
+            except Exception as ocr_error:
+                results.append(f"❌ OCR processing failed: {ocr_error}")
+                import traceback
+                results.append(f"📋 Traceback:\n{traceback.format_exc()}")
+        else:
+            results.append("⚠️ Skipping OCR test - no test PDF available")
+        
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>OCR Detailed Test</title>
+            <style>
+                body {{ font-family: Arial; padding: 20px; background: #f5f5f5; }}
+                .container {{ background: white; padding: 20px; border-radius: 8px; max-width: 1000px; margin: 0 auto; }}
+                .result {{ margin: 10px 0; padding: 10px; border-radius: 5px; background: #f8f8f8; white-space: pre-wrap; }}
+                h1 {{ color: #333; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🔍 OCR Detailed Diagnostic Test</h1>
+                <p>Testing the complete OCR processing pipeline...</p>
+                
+                <h2>Test Results:</h2>
+                {chr(10).join(f'<div class="result">{result}</div>' for result in results)}
+                
+                <p><a href="/" style="display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px;">← Back to Main</a></p>
+            </div>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        import traceback
+        return f'''
+        <html>
+        <body style="font-family: Arial; padding: 20px;">
+            <h1>❌ Error in OCR Detailed Test</h1>
+            <p>Error: {str(e)}</p>
+            <pre>{traceback.format_exc()}</pre>
+            <p><a href="/">← Back to Main</a></p>
+        </body>
+        </html>
+        '''
+
+@app.route('/test-current-submission')
+def test_current_submission():
+    """Test what happens when we submit the form right now"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Current Submission Test</title>
+        <style>
+            body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+            .container { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; }
+            form { margin: 20px 0; }
+            input, select { margin: 10px 0; padding: 8px; width: 100%; }
+            button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🧪 Current Form Submission Test</h1>
+            <p>Submit a form to see what error is currently being returned (those 133-byte responses)...</p>
+            
+            <form action="/submit" method="POST" enctype="multipart/form-data">
+                <input type="text" name="business_entity" value="Test Business" placeholder="Business Entity">
+                <input type="text" name="account_name" value="Test Account" placeholder="Account Name">
+                <input type="text" name="contact_name" value="Test Contact" placeholder="Contact Name">
+                <input type="text" name="title" value="Manager" placeholder="Title">
+                <input type="text" name="phone" value="555-123-4567" placeholder="Phone">
+                <input type="email" name="email" value="test@example.com" placeholder="Email">
+                <input type="text" name="service_addresses" value="123 Test St" placeholder="Service Address">
+                
+                <select name="developer_assigned">
+                    <option value="Meadow Energy">Meadow Energy</option>
+                    <option value="Solar Simplified">Solar Simplified</option>
+                </select>
+                
+                <select name="account_type">
+                    <option value="Mass Market [Residential]">Mass Market [Residential]</option>
+                    <option value="General Service [Small Commercial]">General Service [Small Commercial]</option>
+                </select>
+                
+                <select name="utility_provider">
+                    <option value="National Grid">National Grid</option>
+                    <option value="NYSEG">NYSEG</option>
+                    <option value="RG&E">RG&E</option>
+                </select>
+                
+                <input type="text" name="agent_id" value="0000" placeholder="Agent ID">
+                
+                <p>Upload a utility bill (or it will use test data):</p>
+                <input type="file" name="utility_bill" accept=".pdf,.jpg,.jpeg,.png">
+                
+                <p><input type="checkbox" name="terms_conditions" checked> I agree to Terms & Conditions</p>
+                
+                <button type="submit">Test Submit</button>
+            </form>
+            
+            <p><a href="/" style="display: inline-block; padding: 10px 20px; background: #666; color: white; text-decoration: none; border-radius: 5px;">← Back to Main</a></p>
+        </div>
+    </body>
+    </html>
+    '''
+
+# =================================================================
+# END DIAGNOSTIC ENDPOINTS
+# =================================================================
+
 @app.route('/test-template-processing')
 def test_template_processing():
     """Test endpoint to verify template processing works"""
