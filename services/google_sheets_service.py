@@ -501,6 +501,45 @@ class GoogleSheetsService:
         except Exception as e:
             print(f"❌ Error force-updating headers: {e}")
             raise
+    
+    def _format_header_row(self):
+        """Format the header row with green background and white text"""
+        format_request = {
+            'requests': [{
+                'repeatCell': {
+                    'range': {
+                        'sheetId': 0,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1
+                    },
+                    'cell': {
+                        'userEnteredFormat': {
+                            'backgroundColor': {
+                                'red': 0.17,
+                                'green': 0.33,
+                                'blue': 0.19
+                            },
+                            'horizontalAlignment': 'CENTER',
+                            'textFormat': {
+                                'foregroundColor': {
+                                    'red': 1.0,
+                                    'green': 1.0,
+                                    'blue': 1.0
+                                },
+                                'fontSize': 11,
+                                'bold': True
+                            }
+                        }
+                    },
+                    'fields': 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+                }
+            }]
+        }
+        
+        self.service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=format_request
+        ).execute()
 
     def setup_required_tabs(self):
         """Create required tabs if they don't exist and populate with initial data"""
