@@ -225,8 +225,18 @@ PDF Field → Data Source:
 
 ### Issue 7: Exhibit 1 Field Truncation ✅ FIXED (June 23, 2025)
 **Problem:** Account number showing as "1" and service address getting cut off in Exhibit 1
-**Root Cause:** Long text being truncated due to fixed font size and table cell constraints
-**Solution:** Added dynamic font sizing for Exhibit 1 fields - reduces font from 10pt to 8pt for text longer than 30 characters
+**Root Cause:** Service Address column header at X=605.6 with only 6 points before page edge
+**Solution:** Implemented multi-line text rendering for Exhibit 1 service address:
+- Adjusted dx offset to -185 to place text at start of Service Address column (X=420.6)
+- Multi-line text wrapping for addresses longer than 170 points width
+- 8pt font size for all Exhibit 1 fields
+- Maximum 3 lines for service address to stay within cell height
+
+**Test Results:**
+- Generated 3 test PDFs with varying address lengths
+- Service address now placed at X=420.6 (start of column)
+- Long addresses wrap to multiple lines within cell boundaries
+- No overlap with other columns
 
 ## Deployment Ready
 All critical client feedback has been addressed and tested. The system is ready for production deployment.

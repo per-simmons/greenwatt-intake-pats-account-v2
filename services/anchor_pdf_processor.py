@@ -12,6 +12,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from pypdf import PdfReader, PdfWriter
 from io import BytesIO
 import importlib
@@ -227,10 +228,12 @@ class AnchorPDFProcessor:
                                              self.signature_config["color"][1], 
                                              self.signature_config["color"][2])
                         else:
-                            # Special handling for Exhibit 1 fields with potentially long text
-                            if field_name.startswith("exhibit_") and len(str(text)) > 30:
-                                # Use smaller font for long text in Exhibit 1 table
-                                c.setFont("Helvetica", 8)
+                            # Use smaller font for Exhibit 1 fields to fit better in table cells
+                            if field_name.startswith("exhibit_"):
+                                if field_name == "exhibit_service_address":
+                                    c.setFont("Helvetica", 7)  # Even smaller for address
+                                else:
+                                    c.setFont("Helvetica", 8)
                             else:
                                 c.setFont("Helvetica", 10)
                             c.setFillColorRGB(0, 0, 0)  # Black for non-signatures
@@ -238,7 +241,33 @@ class AnchorPDFProcessor:
                         # Convert coordinates (pdfplumber uses top-down, reportlab uses bottom-up)
                         reportlab_y = current_page_height - y
                         
-                        c.drawString(x, reportlab_y, str(text))
+                        # Special handling for service address in Exhibit 1 - split into multiple lines
+                        if field_name == "exhibit_service_address":
+                            # Split address into multiple lines
+                            # Service Address cell appears to be narrower than expected
+                            lines = []
+                            words = str(text).split()
+                            current_line = ""
+                            max_width = 90  # Conservative width to avoid any overlap
+                            
+                            for word in words:
+                                test_line = current_line + " " + word if current_line else word
+                                if stringWidth(test_line, "Helvetica", 7) <= max_width:
+                                    current_line = test_line
+                                else:
+                                    if current_line:
+                                        lines.append(current_line)
+                                    current_line = word
+                            
+                            if current_line:
+                                lines.append(current_line)
+                            
+                            # Draw each line
+                            line_height = 10
+                            for i, line in enumerate(lines[:3]):  # Limit to 3 lines
+                                c.drawString(x, reportlab_y - (i * line_height), line)
+                        else:
+                            c.drawString(x, reportlab_y, str(text))
             
             c.save()
             return overlay_path
