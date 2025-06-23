@@ -192,22 +192,24 @@ class AnchorPDFProcessor:
             
             # Create all pages to match template
             for canvas_page in range(template_page_count):
-                # Show new page for all pages except the first one (which is created automatically)
+                # Get page dimensions for this specific page
+                if canvas_page < len(pdf.pages):
+                    page = pdf.pages[canvas_page]
+                    current_page_width = page.width
+                    current_page_height = page.height
+                else:
+                    current_page_width = page_width
+                    current_page_height = page_height
+                
+                # Show new page for all pages except the first one
                 if canvas_page > 0:
                     c.showPage()
+                    # Adjust page size if dimensions differ from current canvas
+                    c.setPageSize((current_page_width, current_page_height))
                 
                 # Process field data if it exists for this page (0-indexed)
                 if canvas_page in field_data_by_page:
                     field_data = field_data_by_page[canvas_page]
-                    
-                    # Get page dimensions for this specific page
-                    if canvas_page < len(pdf.pages):
-                        page = pdf.pages[canvas_page]
-                        current_page_width = page.width
-                        current_page_height = page.height
-                    else:
-                        current_page_width = page_width
-                        current_page_height = page_height
                     
                     # Special handling ONLY for Exhibit 1 fields on page 10 to avoid truncation
                     if canvas_page == 9:  # Page 10 (0-indexed)
