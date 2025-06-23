@@ -9,7 +9,7 @@ from datetime import datetime
 import pytz
 from werkzeug.utils import secure_filename
 from services.ocr_service import process_utility_bill
-from services.pdf_generator import generate_poa_pdf, generate_agreement_pdf
+from services.pdf_generator import generate_poa_pdf, generate_agreement_pdf, generate_agency_agreement_pdf
 from services.google_drive_service import GoogleDriveService
 from services.google_sheets_service import GoogleSheetsService
 from services.email_service import send_notification_email
@@ -1644,6 +1644,81 @@ def sandbox_submit_form():
 def get_sandbox_progress(session_id):
     """Get progress for sandbox submission"""
     return get_progress(session_id)
+
+@app.route('/sandbox-test')
+def sandbox_test():
+    """Test sandbox configuration and Google Sheets connectivity"""
+    try:
+        if not os.getenv('SANDBOX_ENABLED', 'false').lower() == 'true':
+            return "Sandbox environment is not enabled. Set SANDBOX_ENABLED=true", 404
+        
+        sandbox_sheets_id = os.getenv('SANDBOX_GOOGLE_SHEETS_ID')
+        sandbox_drive_id = os.getenv('SANDBOX_GOOGLE_DRIVE_FOLDER_ID')
+        
+        test_html = f'''
+        <html>
+        <head><title>Sandbox Configuration Test</title></head>
+        <body style="font-family: Arial; padding: 20px;">
+            <h2>🧪 Sandbox Configuration Test</h2>
+            
+            <h3>Environment Variables</h3>
+            <ul>
+                <li><strong>SANDBOX_ENABLED:</strong> {os.getenv('SANDBOX_ENABLED', 'Not set')}</li>
+                <li><strong>SANDBOX_GOOGLE_SHEETS_ID:</strong> {'✅ Set' if sandbox_sheets_id else '❌ Not set'}</li>
+                <li><strong>SANDBOX_GOOGLE_DRIVE_FOLDER_ID:</strong> {'✅ Set' if sandbox_drive_id else '❌ Not set'}</li>
+            </ul>
+        '''
+        
+        if sandbox_sheets_id:
+            try:
+                sandbox_sheets_service = GoogleSheetsService(
+                    SERVICE_ACCOUNT_INFO,
+                    sandbox_sheets_id,
+                    os.getenv('GOOGLE_AGENT_SHEETS_ID')
+                )
+                
+                utilities = sandbox_sheets_service.get_active_utilities()
+                developers = sandbox_sheets_service.get_active_developers()
+                
+                test_html += f'''
+                <h3>Sandbox Google Sheets Test</h3>
+                <p><strong>✅ Successfully connected to sandbox sheets!</strong></p>
+                <ul>
+                    <li><strong>Active Utilities:</strong> {', '.join(utilities) if utilities else 'None found'}</li>
+                    <li><strong>Active Developers:</strong> {', '.join(developers) if developers else 'None found'}</li>
+                </ul>
+                '''
+            except Exception as e:
+                test_html += f'''
+                <h3>Sandbox Google Sheets Test</h3>
+                <p><strong>❌ Error connecting to sandbox sheets:</strong> {str(e)}</p>
+                '''
+        else:
+            test_html += '''
+            <h3>Sandbox Google Sheets Test</h3>
+            <p><strong>❌ SANDBOX_GOOGLE_SHEETS_ID not configured</strong></p>
+            '''
+        
+        test_html += f'''
+            <h3>Next Steps</h3>
+            <ol>
+                <li>Create sandbox Google Sheet and add ID to environment variables</li>
+                <li>Create sandbox Google Drive folder and add ID to environment variables</li>
+                <li>Set up Utilities and Developer_Mapping tabs in sandbox sheet</li>
+                <li>Upload test agreement templates to sandbox Drive folder</li>
+                <li>Test the full flow at <a href="/sandbox">/sandbox</a></li>
+            </ol>
+            
+            <h3>Configuration Guide</h3>
+            <p>See the <a href="https://github.com/per-simmons/greenwatt-intake-pats-account-v2/blob/main/DYNAMIC_SHEETS_SANDBOX_ROADMAP.md">DYNAMIC_SHEETS_SANDBOX_ROADMAP.md</a> for detailed setup instructions.</p>
+        </body>
+        </html>
+        '''
+        
+        return test_html
+        
+    except Exception as e:
+        return f"Sandbox test error: {str(e)}", 500
 
 @app.route('/test-sendgrid-email-verification', methods=['GET', 'POST'])
 def test_sendgrid_email_verification():

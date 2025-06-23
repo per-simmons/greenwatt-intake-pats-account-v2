@@ -96,6 +96,23 @@ def generate_agreement_pdf(form_data, ocr_data, developer, timestamp):
             # Final fallback to legacy generator
             return _legacy_generate_agreement_pdf(form_data, ocr_data, developer, timestamp)
 
+def generate_agency_agreement_pdf(form_data, ocr_data, timestamp):
+    """Generate Agency Agreement PDF (Terms & Conditions)"""
+    try:
+        # Try to find and use the GWUSA Agency Agreement template
+        agency_template = 'GreenWatt-USA-Inc-Communtiy-Solar-Agency-Agreement.pdf'
+        
+        # Use anchor-based processing for pixel-perfect placement
+        output_path = anchor_processor.process_template_with_anchors(
+            agency_template, form_data, ocr_data, timestamp
+        )
+        return output_path
+            
+    except Exception as e:
+        print(f"Error with anchor-based agency agreement generation: {e}")
+        # Fallback to legacy generator
+        return _legacy_generate_agency_agreement_pdf(form_data, ocr_data, timestamp)
+
 # Legacy generators kept as fallback
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -182,6 +199,85 @@ def _legacy_generate_poa_pdf(form_data, ocr_data, timestamp):
         ['Time:', datetime.now().strftime('%I:%M %p')],
         ['IP Address:', '192.168.1.1'],
         ['Agent ID:', safe(form_data['agent_id'])]
+    ]
+    
+    sig_table = Table(signature_data, colWidths=[2*inch, 4*inch])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    story.append(sig_table)
+    
+    doc.build(story)
+    return filename
+
+def _legacy_generate_agency_agreement_pdf(form_data, ocr_data, timestamp):
+    """Legacy Agency Agreement generator - fallback only"""
+    filename = f"temp/agency_agreement_{timestamp}_legacy.pdf"
+    doc = SimpleDocTemplate(filename, pagesize=letter)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#2c5530'),
+        spaceAfter=30,
+        alignment=1
+    )
+    
+    story.append(Paragraph("GreenWatt USA Inc. Community Solar Agency Agreement (Legacy)", title_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Agreement intro - all user data escaped
+    intro_text = f'This Agency Agreement is entered into on {datetime.now().strftime("%B %d, %Y")} between GreenWatt USA Inc. ("Agent") and <b>{safe(form_data["account_name"])}</b> ("Principal").'
+    story.append(Paragraph(intro_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 1
+    section1_text = '<b>1. APPOINTMENT</b><br/>Principal hereby appoints Agent as their exclusive representative for community solar enrollment and management services.'
+    story.append(Paragraph(section1_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 2
+    section2_text = '<b>2. AUTHORITY</b><br/>Agent is authorized to act on Principal\'s behalf in all matters related to community solar subscriptions, including but not limited to enrollment, account management, and utility communications.'
+    story.append(Paragraph(section2_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 3 - all user data escaped
+    section3_text = f"""<b>3. PRINCIPAL INFORMATION</b><br/>
+    Account Name: {safe(form_data['account_name'])}<br/>
+    Contact Name: {safe(form_data['contact_name'])}<br/>
+    Title: {safe(form_data['title'])}<br/>
+    Phone: {safe(form_data['phone'])}<br/>
+    Email: {safe(form_data['email'])}<br/>
+    Service Address: {safe(form_data['service_addresses'])}<br/>
+    Utility Provider: {safe(form_data['utility_provider'])}"""
+    story.append(Paragraph(section3_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 4
+    section4_text = '<b>4. TERM</b><br/>This agreement shall remain in effect until terminated by either party with 30 days written notice.'
+    story.append(Paragraph(section4_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 5
+    section5_text = '<b>5. COMPLIANCE</b><br/>Agent agrees to comply with all applicable laws and regulations in the performance of services under this agreement.'
+    story.append(Paragraph(section5_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    story.append(Spacer(1, 0.5*inch))
+    
+    signature_data = [
+        ['Principal Signature:', safe(form_data['contact_name']) + ' (Electronic Signature)'],
+        ['Date:', datetime.now().strftime('%B %d, %Y')],
+        ['Time:', datetime.now().strftime('%I:%M %p')],
+        ['Agent ID:', safe(form_data['agent_id'])],
+        ['Agreement Type:', 'Community Solar Agency Agreement']
     ]
     
     sig_table = Table(signature_data, colWidths=[2*inch, 4*inch])
@@ -285,6 +381,85 @@ def _legacy_generate_agreement_pdf(form_data, ocr_data, developer, timestamp):
         ['Time:', datetime.now().strftime('%I:%M %p')],
         ['Acceptance Method:', 'Electronic - Web Form'],
         ['Agent ID:', safe(form_data['agent_id'])]
+    ]
+    
+    sig_table = Table(signature_data, colWidths=[2*inch, 4*inch])
+    sig_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    story.append(sig_table)
+    
+    doc.build(story)
+    return filename
+
+def _legacy_generate_agency_agreement_pdf(form_data, ocr_data, timestamp):
+    """Legacy Agency Agreement generator - fallback only"""
+    filename = f"temp/agency_agreement_{timestamp}_legacy.pdf"
+    doc = SimpleDocTemplate(filename, pagesize=letter)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#2c5530'),
+        spaceAfter=30,
+        alignment=1
+    )
+    
+    story.append(Paragraph("GreenWatt USA Inc. Community Solar Agency Agreement (Legacy)", title_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Agreement intro - all user data escaped
+    intro_text = f'This Agency Agreement is entered into on {datetime.now().strftime("%B %d, %Y")} between GreenWatt USA Inc. ("Agent") and <b>{safe(form_data["account_name"])}</b> ("Principal").'
+    story.append(Paragraph(intro_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 1
+    section1_text = '<b>1. APPOINTMENT</b><br/>Principal hereby appoints Agent as their exclusive representative for community solar enrollment and management services.'
+    story.append(Paragraph(section1_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 2
+    section2_text = '<b>2. AUTHORITY</b><br/>Agent is authorized to act on Principal\'s behalf in all matters related to community solar subscriptions, including but not limited to enrollment, account management, and utility communications.'
+    story.append(Paragraph(section2_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 3 - all user data escaped
+    section3_text = f"""<b>3. PRINCIPAL INFORMATION</b><br/>
+    Account Name: {safe(form_data['account_name'])}<br/>
+    Contact Name: {safe(form_data['contact_name'])}<br/>
+    Title: {safe(form_data['title'])}<br/>
+    Phone: {safe(form_data['phone'])}<br/>
+    Email: {safe(form_data['email'])}<br/>
+    Service Address: {safe(form_data['service_addresses'])}<br/>
+    Utility Provider: {safe(form_data['utility_provider'])}"""
+    story.append(Paragraph(section3_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 4
+    section4_text = '<b>4. TERM</b><br/>This agreement shall remain in effect until terminated by either party with 30 days written notice.'
+    story.append(Paragraph(section4_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Section 5
+    section5_text = '<b>5. COMPLIANCE</b><br/>Agent agrees to comply with all applicable laws and regulations in the performance of services under this agreement.'
+    story.append(Paragraph(section5_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    story.append(Spacer(1, 0.5*inch))
+    
+    signature_data = [
+        ['Principal Signature:', safe(form_data['contact_name']) + ' (Electronic Signature)'],
+        ['Date:', datetime.now().strftime('%B %d, %Y')],
+        ['Time:', datetime.now().strftime('%I:%M %p')],
+        ['Agent ID:', safe(form_data['agent_id'])],
+        ['Agreement Type:', 'Community Solar Agency Agreement']
     ]
     
     sig_table = Table(signature_data, colWidths=[2*inch, 4*inch])
