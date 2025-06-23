@@ -517,6 +517,7 @@ def test_pdf_generation():
 # DIAGNOSTIC ENDPOINTS FOR OCR TROUBLESHOOTING
 # =================================================================
 
+@app.route('/test-poppler')
 def test_poppler():
     """Test if poppler-utils is installed and accessible"""
     try:
@@ -599,6 +600,7 @@ def test_poppler():
         </html>
         '''
 
+@app.route('/test-pdf2image')
 def test_pdf2image():
     """Test pdf2image functionality with a simple conversion"""
     try:
@@ -691,6 +693,7 @@ def test_pdf2image():
         </html>
         '''
 
+@app.route('/test-ocr-detailed')
 def test_ocr_detailed():
     """Test OCR processing with detailed logging and error reporting"""
     try:
@@ -785,6 +788,7 @@ def test_ocr_detailed():
         </html>
         '''
 
+@app.route('/test-current-submission')
 def test_current_submission():
     """Test what happens when we submit the form right now"""
     return '''

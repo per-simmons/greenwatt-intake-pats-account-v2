@@ -1,5 +1,50 @@
 # Dynamic Google Sheets Integration - Sandbox Implementation Roadmap
 
+## What This System Does (Plain English)
+
+### **The Problem This Solves:**
+Currently, when the client wants to make business changes, they need a developer:
+- **Add a new utility company?** → Call developer, change code, redeploy website
+- **Add a new solar developer/operator?** → Call developer, change code, redeploy website  
+- **Change which agreement goes with which combination?** → Call developer, change code, redeploy website
+- **Update contract templates?** → Call developer, update files, redeploy website
+
+### **What This System Enables:**
+The client can manage their entire business logic through simple Google Sheets - **no coding required**:
+
+#### **What the Client Can Do Themselves:**
+1. **Add/Remove Utility Companies**: 
+   - Edit "Utilities" tab in Google Sheet
+   - Set active_flag to TRUE (appears in dropdown) or FALSE (hidden)
+   - Changes appear on website within 15 minutes
+
+2. **Add/Remove Solar Developers**:
+   - Add new rows to "Developer_Mapping" tab
+   - New developers automatically appear in form dropdown
+
+3. **Manage Agreement Templates**:
+   - Upload new PDF templates to Google Drive "Templates" folder
+   - Map which template goes with each Developer + Utility combination
+   - System automatically selects correct agreement for each submission
+
+4. **Control Business Logic**:
+   - Want to temporarily hide a utility? Set flag to FALSE
+   - New developer partnership? Add their templates and mappings
+   - Different agreement for different account types? All configurable
+
+#### **What Happens Automatically:**
+- Form dropdowns update to show only active utilities/developers
+- System picks the right agreement template based on customer selections
+- All submissions logged with proper template tracking
+- **Zero code changes or deployments needed**
+
+#### **Example Workflow:**
+```
+Client wants to add "Orange & Rockland" utility:
+OLD WAY: Call developer → Code changes → Test → Deploy (days/weeks)
+NEW WAY: Edit Google Sheet → Wait 15 minutes → Done (minutes)
+```
+
 ## Overview
 This document outlines the complete process for creating a sandbox environment to test dynamic Google Sheets integration for the GreenWatt intake form. The sandbox will allow testing of dynamic utilities, developers, and agreement mapping without affecting the production system.
 
@@ -213,6 +258,55 @@ Create guide for client showing:
 - Changes to Google Sheets may take up to 15 minutes to appear
 - Use `sheets_service.clear_cache()` for immediate updates during testing
 
+## Enhanced Testing Routes
+
+### Available Test Endpoints:
+- **`/sandbox`** - Main sandbox form with dynamic dropdowns
+- **`/sandbox-test`** - Configuration verification and connectivity test
+- **`/sandbox-clear-cache`** - Clear cache for immediate testing (no 15-minute wait)
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions:
+
+#### 1. "Sandbox environment is not enabled"
+- **Cause**: `SANDBOX_ENABLED` not set to `true`
+- **Solution**: Add `SANDBOX_ENABLED=true` to environment variables
+
+#### 2. "Sandbox not configured"
+- **Cause**: Missing `SANDBOX_GOOGLE_SHEETS_ID` or `SANDBOX_GOOGLE_DRIVE_FOLDER_ID`
+- **Solution**: Create sandbox resources and add IDs to environment
+
+#### 3. Empty Dropdowns
+- **Cause**: Missing tabs in Google Sheet or incorrect data format
+- **Solution**: 
+  - Verify "Utilities" tab exists with columns: `utility_name | active_flag`
+  - Verify "Developer_Mapping" tab exists with columns: `developer_name | utility_name | file_name`
+  - Check that active_flag values are exactly "TRUE" (case-sensitive)
+
+#### 4. "No template mapping found" 
+- **Cause**: Missing developer/utility combination in Developer_Mapping tab
+- **Solution**: Add row with exact developer and utility names from form dropdowns
+
+#### 5. Cache Not Updating
+- **Cause**: 15-minute cache TTL hasn't expired
+- **Solution**: Use `/sandbox-clear-cache` endpoint for immediate updates
+
+#### 6. POID Field Not Working
+- **Cause**: Utility names in Google Sheets don't exactly match "NYSEG" or "RG&E"
+- **Solution**: Ensure exact spelling - "NYSEG" and "RG&E" (case-sensitive)
+
+### Template File Requirements:
+- Files must exist in Google Drive Templates folder
+- File names must exactly match what's in Developer_Mapping tab
+- Include .pdf extension in mapping
+- Case-sensitive matching
+
+### Cache Management:
+- Changes take up to 15 minutes to appear normally
+- Use `/sandbox-clear-cache` for immediate testing
+- Production should rarely need cache clearing
+
 ## Rollback Plan
 If issues arise:
 1. Sandbox remains isolated - no production impact
@@ -226,3 +320,5 @@ If issues arise:
 3. Form dynamically updates based on Sheet changes
 4. All existing functionality remains intact
 5. No impact to production during testing
+6. Robust error handling for missing templates
+7. Clear troubleshooting documentation
