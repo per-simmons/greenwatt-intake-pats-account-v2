@@ -1,15 +1,18 @@
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
+from .google_service_manager import GoogleServiceManager
 
 class GoogleDriveService:
-    def __init__(self, service_account_info, parent_folder_id=None):
-        self.credentials = service_account.Credentials.from_service_account_info(
-            service_account_info,
-            scopes=['https://www.googleapis.com/auth/drive']
-        )
-        self.service = build('drive', 'v3', credentials=self.credentials)
+    def __init__(self, service_account_info=None, parent_folder_id=None):
+        # Use the singleton service manager
+        self.service_manager = GoogleServiceManager()
+        
+        # Initialize the service manager if credentials provided
+        if service_account_info:
+            self.service_manager.initialize(service_account_info)
+        
+        # Get the shared drive service
+        self.service = self.service_manager.get_drive_service()
         self.parent_folder_id = parent_folder_id
         
     def create_folder(self, folder_name, parent_id=None):

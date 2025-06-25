@@ -61,7 +61,7 @@ NEW WAY: Edit Google Sheet → Wait 15 minutes → Done (minutes)
 - **Templates Subfolder**: "Templates" (where Jason uploads new contract PDFs)
 
 #### **How Jason Manages Contract Templates:**
-
+Note: In order to ensure proper OCR mapping to the PDF's, the new Solar Simplified agreement should match the format of previous Meadow agreements
 **Step 1: Upload New Contract PDF**
 - Go to Google Drive folder: "GreenWatt_Dynamic_Intake" → "Templates"
 - Upload new PDF with any name (e.g., "Solar-Simplified-NYSEG-Agreement-v3.pdf")

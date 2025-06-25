@@ -45,23 +45,25 @@ else:
     except FileNotFoundError:
         raise Exception("Service account credentials not found. Set GOOGLE_SERVICE_ACCOUNT_JSON environment variable.")
 
-drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, os.getenv('GOOGLE_DRIVE_PARENT_FOLDER_ID'))
+# Initialize the singleton service manager first
+from services.google_service_manager import GoogleServiceManager
+service_manager = GoogleServiceManager()
+service_manager.initialize(SERVICE_ACCOUNT_INFO)
+print("📊 Initial memory status:")
+service_manager.log_memory_status("after initialization")
+
+# Create services using the singleton pattern
+drive_service = GoogleDriveService(parent_folder_id=os.getenv('GOOGLE_DRIVE_PARENT_FOLDER_ID'))
+
+# CONSOLIDATED SHEETS SERVICE - handles both main and dynamic sheets
 sheets_service = GoogleSheetsService(
-    SERVICE_ACCOUNT_INFO, 
-    os.getenv('GOOGLE_SHEETS_ID'),
-    os.getenv('GOOGLE_AGENT_SHEETS_ID')
+    spreadsheet_id=os.getenv('GOOGLE_SHEETS_ID'),
+    agent_spreadsheet_id=os.getenv('GOOGLE_AGENT_SHEETS_ID'),
+    dynamic_spreadsheet_id=os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
 )
 
-# Create global dynamic sheets service instance (memory optimization)
-dynamic_sheets_id = os.getenv('DYNAMIC_GOOGLE_SHEETS_ID')
-if dynamic_sheets_id:
-    dynamic_sheets_service = GoogleSheetsService(
-        SERVICE_ACCOUNT_INFO, 
-        dynamic_sheets_id,
-        os.getenv('GOOGLE_AGENT_SHEETS_ID')
-    )
-else:
-    dynamic_sheets_service = None
+# For backward compatibility, create alias for dynamic_sheets_service
+dynamic_sheets_service = sheets_service  # Points to same instance!
 
 sms_service = SMSService()
 
@@ -155,35 +157,42 @@ def cleanup_old_sessions():
     current_time = time.time()
     to_remove = []
     
-    # First pass: Remove old sessions
+    # First pass: Remove old sessions - MORE AGGRESSIVE
     for session_id, session in progress_sessions.items():
-        # Remove if older than 5 minutes OR if marked for cleanup
-        cleanup_time = session.get('cleanup_time', session['start_time'] + 300)
+        # Remove if older than 2 minutes OR if marked for cleanup
+        cleanup_time = session.get('cleanup_time', session['start_time'] + 120)
         if current_time > cleanup_time:
             to_remove.append(session_id)
-        # Also remove if session is older than 10 minutes regardless
-        elif current_time - session['start_time'] > 600:
+        # Also remove if session is older than 5 minutes regardless
+        elif current_time - session['start_time'] > 300:
             to_remove.append(session_id)
     
     # Remove identified sessions
     for session_id in to_remove:
         del progress_sessions[session_id]
     
-    # Second pass: Enforce maximum session limit (keep newest 100)
-    if len(progress_sessions) > 100:
-        # Sort by start time and keep only the newest 100
+    # Second pass: Enforce maximum session limit (keep newest 50 instead of 100)
+    if len(progress_sessions) > 50:
+        # Sort by start time and keep only the newest 50
         sorted_sessions = sorted(progress_sessions.items(), 
                                key=lambda x: x[1]['start_time'], 
                                reverse=True)
         progress_sessions.clear()
-        progress_sessions.update(dict(sorted_sessions[:100]))
+        progress_sessions.update(dict(sorted_sessions[:50]))
     
     # Log memory status
     try:
         process = psutil.Process(os.getpid())
         memory_mb = process.memory_info().rss / 1024 / 1024
-        if memory_mb > 400:  # Warning at 400MB
-            print(f"⚠️ High memory usage: {memory_mb:.1f}MB - forcing garbage collection")
+        if memory_mb > 350:  # Warning at 350MB (lower threshold)
+            print(f"⚠️ High memory usage: {memory_mb:.1f}MB - forcing aggressive cleanup")
+            # More aggressive cleanup
+            if len(progress_sessions) > 20:
+                sorted_sessions = sorted(progress_sessions.items(), 
+                                       key=lambda x: x[1]['start_time'], 
+                                       reverse=True)
+                progress_sessions.clear()
+                progress_sessions.update(dict(sorted_sessions[:20]))
             gc.collect()
     except:
         pass
@@ -1571,8 +1580,8 @@ def process_submission_background(session_id, form_data, file_path):
         dynamic_drive_id = os.getenv('DYNAMIC_GOOGLE_DRIVE_FOLDER_ID')
         
         if dynamic_sheets_id and dynamic_drive_id:
-            # Use global dynamic service (memory optimization)
-            dynamic_drive_service = GoogleDriveService(SERVICE_ACCOUNT_INFO, dynamic_drive_id)
+            # Reuse existing drive service with different parent folder
+            dynamic_drive_service = GoogleDriveService(parent_folder_id=dynamic_drive_id)
             
             agreement_filename = dynamic_sheets_service.get_developer_agreement(
                 form_data['developer_assigned'], 
@@ -1767,6 +1776,8 @@ def process_submission_background(session_id, form_data, file_path):
 def submit_form():
     """Modified submit endpoint to use background processing with real-time progress tracking"""
     try:
+        # Log memory status before processing
+        service_manager.log_memory_status("before form submission")
         form_data = {
             'business_entity': request.form.get('business_entity', ''),
             'account_name': request.form.get('account_name'),
@@ -1815,6 +1826,9 @@ def submit_form():
         )
         thread.daemon = True
         thread.start()
+        
+        # Log memory status after starting background thread
+        service_manager.log_memory_status("after starting submission thread")
         
         # Return session ID for progress tracking
         return jsonify({
@@ -2081,15 +2095,17 @@ def dynamic_cache_manager():
 def dynamic_clear_cache_now():
     """Actually clear the cache and show results"""
     try:
-        # Use global dynamic sheets service (memory optimization)
-        if not dynamic_sheets_service:
-            return "Dynamic sheets not configured", 500
+        # Log memory before cache clear
+        service_manager.log_memory_status("before cache clear")
         
-        dynamic_sheets_service.clear_cache()
+        # Use consolidated sheets service
+        sheets_service.clear_cache()
         
-        # Get fresh data after clearing
-        utilities = dynamic_sheets_service.get_active_utilities()
-        developers = dynamic_sheets_service.get_active_developers()
+        # Log memory after cache clear
+        service_manager.log_memory_status("after cache clear")
+        
+        # Don't fetch data immediately to avoid memory spike
+        # Let the next request populate the cache naturally
         
         return f'''
         <html>
@@ -2099,16 +2115,10 @@ def dynamic_clear_cache_now():
             <p><strong>Fresh data has been loaded from Google Sheets</strong></p>
             
             <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
-                <h3>📊 Fresh Data Retrieved:</h3>
-                <h4>Active Utilities:</h4>
-                <ul>
-                    {(''.join([f'<li><strong>{utility}</strong></li>' for utility in utilities]) if utilities else '<li><em>No utilities found</em></li>')}
-                </ul>
-                
-                <h4>Active Developers:</h4>
-                <ul>
-                    {(''.join([f'<li><strong>{developer}</strong></li>' for developer in developers]) if developers else '<li><em>No developers found</em></li>')}
-                </ul>
+                <h3>📊 Cache Status:</h3>
+                <p>• Previous cache data has been cleared</p>
+                <p>• Fresh data will be loaded from Google Sheets on next request</p>
+                <p>• This prevents memory spikes from simultaneous API calls</p>
             </div>
             
             <div style="background: #cff4fc; padding: 15px; border-radius: 5px; margin: 15px 0;">

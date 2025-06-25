@@ -1,19 +1,25 @@
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 from cachetools import TTLCache
+from .google_service_manager import GoogleServiceManager
 
 class GoogleSheetsService:
-    def __init__(self, service_account_info, spreadsheet_id, agent_spreadsheet_id=None):
-        self.credentials = service_account.Credentials.from_service_account_info(
-            service_account_info,
-            scopes=['https://www.googleapis.com/auth/spreadsheets']
-        )
-        self.service = build('sheets', 'v4', credentials=self.credentials)
-        self.spreadsheet_id = spreadsheet_id
-        self.agent_spreadsheet_id = agent_spreadsheet_id or spreadsheet_id
+    def __init__(self, service_account_info=None, spreadsheet_id=None, agent_spreadsheet_id=None, dynamic_spreadsheet_id=None):
+        # Use the singleton service manager
+        self.service_manager = GoogleServiceManager()
         
-        # 10-minute cache for sheet lookups (smaller for memory efficiency)
-        self.cache = TTLCache(maxsize=16, ttl=600)
+        # Initialize the service manager if credentials provided
+        if service_account_info:
+            self.service_manager.initialize(service_account_info)
+        
+        # Get the shared sheets service
+        self.service = self.service_manager.get_sheets_service()
+        
+        # Store multiple spreadsheet IDs
+        self.spreadsheet_id = spreadsheet_id  # Main logging sheet
+        self.agent_spreadsheet_id = agent_spreadsheet_id or spreadsheet_id
+        self.dynamic_spreadsheet_id = dynamic_spreadsheet_id  # Dynamic form data sheet
+        
+        # INCREASED cache size for better performance (was 16, now 100)
+        self.cache = TTLCache(maxsize=100, ttl=600)
         
         # Column indexes for formatting (0-based) - Updated after removing form columns
         self.MONTHLY_USAGE_COL = 15   # Column P - kWh format (shifted left by 2)
@@ -344,8 +350,10 @@ class GoogleSheetsService:
             return self.cache[cache_key]
             
         try:
+            # Use dynamic spreadsheet ID if available, otherwise fall back to main
+            sheet_id = self.dynamic_spreadsheet_id or self.spreadsheet_id
             rows = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
+                spreadsheetId=sheet_id,
                 range="Utilities!A:B"
             ).execute().get("values", [])
             
@@ -368,8 +376,10 @@ class GoogleSheetsService:
             return self.cache[cache_key]
             
         try:
+            # Use dynamic spreadsheet ID if available, otherwise fall back to main
+            sheet_id = self.dynamic_spreadsheet_id or self.spreadsheet_id
             rows = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
+                spreadsheetId=sheet_id,
                 range="Developer_Mapping"
             ).execute().get("values", [])
             
@@ -392,8 +402,10 @@ class GoogleSheetsService:
             return self.cache[cache_key]
             
         try:
+            # Use dynamic spreadsheet ID if available, otherwise fall back to main
+            sheet_id = self.dynamic_spreadsheet_id or self.spreadsheet_id
             rows = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
+                spreadsheetId=sheet_id,
                 range="Developer_Mapping"
             ).execute().get("values", [])
             
