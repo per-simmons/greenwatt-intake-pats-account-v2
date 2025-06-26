@@ -66,6 +66,7 @@ customer_name     – String
 account_number    – String
 poid              – String (may be empty)
 monthly_usage_kwh – Integer (no commas)
+usage_breakdown   – Array of numbers (for debugging, may be empty)
 service_address   – String (may be empty)
   
 Rules:
@@ -100,12 +101,31 @@ Rules:
   - If not found, return empty string (National Grid typically doesn't have POID)
 
 • monthly_usage_kwh = Find the ENERGY CONSUMPTION in kWh (kilowatt-hours) for this billing period:
-  - Look for numbers followed by "kWh" that represent electricity consumed
+  
+  FOR RG&E AND NYSEG BILLS ONLY:
+  - Look for a table column labeled "Billed Usage" or "Usage" 
+  - Scan vertically down that column for values with "kWh" units
+  - Sum ALL kWh values found in that column
+  - Example: If column contains "1217 kWh", "1768 kWh", "3213 kWh", return 6198
+  
+  FOR NATIONAL GRID BILLS:
+  - Use simple method: Look for single kWh value near "kWh Used", "Energy Usage", "Consumption"
+  - Return the main monthly consumption value
+  
+  FOR ALL OTHER UTILITIES:
   - Search near "kWh Used", "Energy Usage", "Consumption", "kWh This Period"
   - Look in usage tables or consumption summaries
   - If only daily averages shown (like "12.67 kWh/Day"), multiply by 30 for monthly estimate
+  
+  GENERAL RULES:
   - This is ENERGY consumed, NOT dollar amounts
   - Return as integer (round if decimal, strip commas)
+  - Ignore kW (kilowatt), therms, or other non-kWh units
+
+• usage_breakdown = For RG&E/NYSEG bills, return array of individual kWh values found in usage column:
+  - Example: [1217, 1768, 3213] if those were the kWh values in the column
+  - For other utilities, return empty array []
+  - This helps with debugging and verification
 
 • service_address = Service address from utility bill:
   - Look for service address in bill header or account information section
@@ -244,16 +264,37 @@ Text to parse:
         
         final_data['poid'] = poid
         
-        # Monthly usage with better validation
+        # Monthly usage with better validation and utility-specific logic
         monthly_usage_kwh = parsed_data.get('monthly_usage_kwh', '')
+        usage_breakdown = parsed_data.get('usage_breakdown', [])
+        utility_name = final_data.get('utility_name', '')
+        
+        print(f"=== USAGE EXTRACTION DEBUG ===")
+        print(f"Utility: {utility_name}")
+        print(f"Raw monthly_usage_kwh: {monthly_usage_kwh}")
+        print(f"Usage breakdown: {usage_breakdown}")
+        
         if monthly_usage_kwh:
             try:
                 # Clean and convert monthly usage
                 monthly_clean = str(monthly_usage_kwh).replace(',', '').replace('kWh', '').replace('kwh', '').strip()
                 monthly_value = float(monthly_clean)
+                
+                # For RG&E/NYSEG, verify against breakdown if available
+                if utility_name in ['RG&E', 'NYSEG'] and usage_breakdown:
+                    breakdown_sum = sum(usage_breakdown) if isinstance(usage_breakdown, list) else 0
+                    if breakdown_sum > 0:
+                        print(f"RG&E/NYSEG: Using breakdown sum {breakdown_sum} instead of single value {monthly_value}")
+                        monthly_value = breakdown_sum
+                
                 final_data['monthly_usage'] = str(int(round(monthly_value)))
                 final_data['annual_usage'] = str(int(round(monthly_value * 12)))
-                print(f"Monthly usage: {monthly_value} kWh -> Annual: {monthly_value * 12} kWh")
+                print(f"Final monthly usage: {monthly_value} kWh -> Annual: {monthly_value * 12} kWh")
+                
+                # Store breakdown for debugging
+                if usage_breakdown:
+                    print(f"Usage breakdown values: {usage_breakdown}")
+                    
             except (ValueError, AttributeError):
                 print("MONTHLY_USAGE_PARSE_ERROR")
                 final_data['monthly_usage'] = ''
@@ -262,6 +303,8 @@ Text to parse:
             print("MONTHLY_USAGE_NOT_FOUND")
             final_data['monthly_usage'] = ''
             final_data['annual_usage'] = ''
+        
+        print(f"=== END USAGE DEBUG ===")
         
         # Service address
         final_data['service_address'] = parsed_data.get('service_address', '')
