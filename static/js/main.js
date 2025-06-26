@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // File upload functionality - unified single input system
     function setupFileUploads() {
+        console.log('Setting up file uploads...');
+        console.log('Upload area:', uploadArea);
+        console.log('File input:', fileInput);
+        
         // Single file input handler
         if (fileInput) {
             fileInput.addEventListener('change', function(e) {
@@ -33,6 +37,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadArea.addEventListener(eventName, preventDefaults, false);
                 document.body.addEventListener(eventName, preventDefaults, false);
             });
+            
+            // Add test listener to see if ANY drag events are received
+            uploadArea.addEventListener('dragover', function(e) {
+                console.log('DRAGOVER EVENT RECEIVED!');
+            }, true);
             
             // Highlight drop area when item is dragged over it
             ['dragenter', 'dragover'].forEach(eventName => {
