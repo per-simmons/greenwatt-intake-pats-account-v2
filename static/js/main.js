@@ -53,21 +53,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         function highlight(e) {
+            console.log('Drag enter/over detected');
             uploadArea.classList.add('dragover');
         }
         
         function unhighlight(e) {
+            console.log('Drag leave/drop detected');
             uploadArea.classList.remove('dragover');
         }
         
         function handleDrop(e) {
+            console.log('File dropped!');
             const dt = e.dataTransfer;
             const files = dt.files;
             
             if (files.length > 0) {
-                // Set files on the single input
-                fileInput.files = files;
+                console.log('Processing dropped file:', files[0].name);
+                
+                try {
+                    // Modern approach: Create a new FileList-like object and assign it properly
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Trigger change event to ensure all handlers are called
+                    const event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                    
+                    console.log('File successfully set via drag & drop (modern method)');
+                } catch (error) {
+                    console.log('DataTransfer not supported, using fallback method');
+                    // Fallback: Store file reference and update UI manually
+                    fileInput.droppedFile = files[0];
+                    
+                    // Create a custom change event with file data
+                    const event = new CustomEvent('change', { 
+                        bubbles: true,
+                        detail: { droppedFile: files[0] }
+                    });
+                    fileInput.dispatchEvent(event);
+                }
+                
                 updateFileInfo(files[0]);
+                console.log('Drag & drop processing complete');
             }
         }
         
@@ -77,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const fileExt = file.name.split('.').pop().toLowerCase();
             
             console.log('Updating file info for:', file.name, 'Type:', file.type, 'Size:', file.size);
+            console.log('File extension:', fileExt, 'Allowed types:', allowedTypes);
             
             if (file.size > maxSize) {
                 fileInfo.innerHTML = '<span style="color: #d9534f;">❌ File too large (max 16MB)</span>';
@@ -204,6 +233,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const formData = new FormData(form);
+        
+        // Handle dropped files for browsers that don't support DataTransfer
+        if (fileInput && fileInput.droppedFile && (!fileInput.files || fileInput.files.length === 0)) {
+            console.log('Adding dropped file to form data:', fileInput.droppedFile.name);
+            formData.set('utility_bill', fileInput.droppedFile);
+        }
         
         // Hide form and show loading with progress tracking
         form.style.display = 'none';
