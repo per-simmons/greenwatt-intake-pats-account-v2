@@ -90,10 +90,13 @@ Rules:
 • Account number = first 8–18 character sequence containing at least 6 digits appearing within 50 characters AFTER: ["account","acct","account no","account number"] (case-insensitive). Keep hyphens and leading zeros.
 
 • POID = Point of Delivery ID for RG&E/NYSEG bills:
-  - For RG&E bills: Look for "PoD ID" or "Point of Delivery ID" in top right section
+  - For RG&E bills: Look for "POD ID:" or "PoD ID:" label, then extract the value that IMMEDIATELY follows
+    * RG&E POIDs ALWAYS start with "R" followed by 14 digits (e.g., R01000035625383)
+    * DO NOT confuse with meter numbers which typically start with "035" and are 10 digits
+    * The POID appears BEFORE the meter number table in the bill
   - For NYSEG bills: Look for "PoD ID" or "Point of Delivery ID" in top right section  
   - For other utilities: Look for "POID", "Point ID", or similar near account information
-  - Extract the 6-12 digit sequence that follows these identifiers
+  - Extract the complete alphanumeric sequence including any prefix letters
   - If not found, return empty string (National Grid typically doesn't have POID)
 
 • monthly_usage_kwh = Find the ENERGY CONSUMPTION in kWh (kilowatt-hours) for this billing period:
@@ -177,8 +180,69 @@ Text to parse:
         else:
             final_data['account_number'] = ''
         
-        # POID
-        final_data['poid'] = parsed_data.get('poid', '')
+        # POID with RG&E-specific validation
+        poid = parsed_data.get('poid', '')
+        utility_name = final_data.get('utility_name', '')
+        
+        print(f"=== POID EXTRACTION DEBUG ===")
+        print(f"Utility: {utility_name}")
+        print(f"LLM extracted POID: '{poid}'")
+        
+        # Special validation for RG&E POIDs
+        if utility_name == 'RG&E':
+            # RG&E POIDs should start with 'R' followed by 14 digits
+            import re
+            
+            # First, let's see what's around "POD ID" in the text
+            pod_context = re.search(r'(.{20}Po[Dd] ID:.{50})', cleaned_text)
+            if pod_context:
+                print(f"POD ID context: ...{pod_context.group(1)}...")
+            
+            if poid and not re.match(r'^R\d{14}$', poid):
+                print(f"WARNING: Invalid RG&E POID format: {poid}")
+                # Check if it's a meter number (typically starts with 035)
+                if poid.startswith('035') and len(poid) == 10:
+                    print(f"ERROR: Meter number {poid} mistaken for POID")
+                
+                # Try multiple patterns to find the real POID
+                patterns = [
+                    r'Po[Dd] ID:\s*([R]\d{14})',
+                    r'POD ID:\s*([R]\d{14})',
+                    r'Point of Delivery ID:\s*([R]\d{14})',
+                    r'([R]\d{14})(?=\s*Meter Number)'  # POID before meter number
+                ]
+                
+                for pattern in patterns:
+                    poid_match = re.search(pattern, cleaned_text)
+                    if poid_match:
+                        poid = poid_match.group(1)
+                        print(f"FIXED: Found correct POID using pattern '{pattern}': {poid}")
+                        break
+                else:
+                    poid = ''
+                    print("ERROR: Could not find valid RG&E POID with any pattern")
+            elif poid and re.match(r'^R\d{14}$', poid):
+                print(f"SUCCESS: Valid RG&E POID format confirmed: {poid}")
+            elif not poid:
+                # LLM didn't extract any POID, try to find it ourselves
+                print("WARNING: LLM didn't extract POID for RG&E bill, searching manually...")
+                patterns = [
+                    r'Po[Dd] ID:\s*([R]\d{14})',
+                    r'POD ID:\s*([R]\d{14})',
+                    r'Point of Delivery ID:\s*([R]\d{14})'
+                ]
+                
+                for pattern in patterns:
+                    poid_match = re.search(pattern, cleaned_text)
+                    if poid_match:
+                        poid = poid_match.group(1)
+                        print(f"FOUND: Located POID using pattern '{pattern}': {poid}")
+                        break
+        
+        print(f"Final POID: '{poid}'")
+        print(f"=== END POID DEBUG ===")
+        
+        final_data['poid'] = poid
         
         # Monthly usage with better validation
         monthly_usage_kwh = parsed_data.get('monthly_usage_kwh', '')
