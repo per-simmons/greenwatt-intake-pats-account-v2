@@ -207,3 +207,35 @@ if memory_mb > 350:  # Only cleans at 350MB of 512MB limit
 - **Well-tested patterns**: Singleton, context managers, GC
 
 This comprehensive fix addresses ALL identified memory leaks and should permanently resolve the memory exhaustion issues.
+
+## CRITICAL UPDATE: Overly Aggressive Cleanup Causing Timeouts
+
+### Issue Discovered (2025-06-27 13:49 UTC)
+After deploying the memory fixes, form submissions started timing out with 404 errors on progress endpoints. Investigation revealed:
+
+1. **The Problem**: 
+   - Cleanup deletes sessions after only 2 minutes
+   - At 300MB, ALL sessions are cleared including active ones
+   - Sessions processing forms are deleted while still in use
+   - Frontend gets 404 errors when polling for progress
+
+2. **Important Clarification**:
+   - **NO DATA IS LOST** - Google Sheets and Drive uploads still complete
+   - Only the progress tracking UI is affected
+   - Forms may appear to timeout but often complete in background
+   - This is a UX issue, not a data integrity issue
+
+3. **Root Cause**:
+   - `cleanup_old_sessions()` doesn't check if session is actively processing
+   - 2-minute timeout is too short for complex form processing
+   - Emergency cleanup at 300MB is too aggressive
+
+4. **Required Fix**:
+   - Add session status tracking ('in_progress', 'completed')
+   - Never delete sessions marked as 'in_progress'
+   - Increase minimum session lifetime to 10 minutes
+   - Remove "clear ALL" at 300MB threshold
+   - Only clean up completed or abandoned sessions
+
+### Lesson Learned
+Memory optimization must balance resource usage with active operations. Always protect in-flight transactions.

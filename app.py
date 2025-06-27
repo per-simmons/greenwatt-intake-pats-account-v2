@@ -98,7 +98,8 @@ def create_progress_session():
         'start_time': time.time(),
         'estimated_completion': time.time() + 120,  # 2 minutes estimate
         'completed': False,
-        'error': None
+        'error': None,
+        'status': 'in_progress'  # Mark as actively processing
     }
     return session_id
 
@@ -135,6 +136,8 @@ def complete_progress(session_id, success=True, error=None):
     session['completed'] = True
     session['percentage'] = 100 if success else session['percentage']
     session['error'] = error
+    session['status'] = 'completed'  # Mark as no longer processing
+    session['completed_time'] = time.time()  # Track when it completed
     
     if success:
         session['step_name'] = 'Complete'
@@ -153,28 +156,40 @@ def complete_progress(session_id, success=True, error=None):
     session['cleanup_time'] = time.time() + 120  # 2 minutes
 
 def cleanup_old_sessions():
-    """Clean up old progress sessions more aggressively"""
+    """Clean up old progress sessions while protecting active ones"""
     current_time = time.time()
     sessions_to_remove = []
     
     for session_id, session in progress_sessions.items():
-        # Remove if older than 2 minutes OR if marked for cleanup
-        cleanup_time = session.get('cleanup_time', session['start_time'] + 120)
-        if current_time > cleanup_time:
+        # NEVER delete sessions that are still processing
+        if session.get('status') == 'in_progress':
+            continue
+            
+        # Check if session is completed or abandoned
+        is_completed = session.get('status') == 'completed'
+        is_old = current_time > session.get('start_time', 0) + 600  # 10 minutes instead of 2
+        
+        # Remove if completed AND older than 2 minutes, or if abandoned for 10 minutes
+        if is_completed and current_time > session.get('completed_time', session['start_time']) + 120:
+            sessions_to_remove.append(session_id)
+        elif not is_completed and is_old:
             sessions_to_remove.append(session_id)
     
     # Remove old sessions
     for session_id in sessions_to_remove:
         del progress_sessions[session_id]
     
-    # MORE AGGRESSIVE: Keep only 10 most recent sessions if we have more than 10
-    if len(progress_sessions) > 10:
-        # Sort by start time and keep only the 10 most recent
-        sorted_sessions = sorted(progress_sessions.items(), 
-                               key=lambda x: x[1]['start_time'], 
-                               reverse=True)
-        progress_sessions.clear()
-        progress_sessions.update(dict(sorted_sessions[:10]))
+    # Keep more sessions (20 instead of 10) and NEVER remove in_progress ones
+    if len(progress_sessions) > 20:
+        # Sort by start time but exclude in_progress sessions
+        completed_sessions = [(sid, s) for sid, s in progress_sessions.items() 
+                            if s.get('status') != 'in_progress']
+        completed_sessions.sort(key=lambda x: x[1]['start_time'], reverse=True)
+        
+        # If we have too many completed sessions, remove the oldest
+        if len(completed_sessions) > 15:
+            for sid, _ in completed_sessions[15:]:
+                del progress_sessions[sid]
     
     # Log memory status with more detail
     try:
@@ -185,18 +200,31 @@ def cleanup_old_sessions():
         if memory_mb > 250:
             print(f"⚠️ High memory usage: {memory_mb:.1f}MB - forcing aggressive cleanup")
             
-            # Clear ALL progress sessions if memory is critical
+            # NEVER clear in-progress sessions, even at critical memory levels
             if memory_mb > 300:
-                print(f"🚨 CRITICAL: Clearing all {len(progress_sessions)} progress sessions")
+                # Count in-progress sessions
+                in_progress_count = sum(1 for s in progress_sessions.values() 
+                                      if s.get('status') == 'in_progress')
+                completed_count = len(progress_sessions) - in_progress_count
+                
+                print(f"🚨 CRITICAL memory: {in_progress_count} active, {completed_count} completed sessions")
+                
+                # Remove only completed/abandoned sessions
+                sessions_to_keep = {sid: s for sid, s in progress_sessions.items() 
+                                  if s.get('status') == 'in_progress'}
                 progress_sessions.clear()
+                progress_sessions.update(sessions_to_keep)
             else:
-                # Keep only 5 most recent if memory is high
-                if len(progress_sessions) > 5:
-                    sorted_sessions = sorted(progress_sessions.items(), 
-                                           key=lambda x: x[1]['start_time'], 
-                                           reverse=True)
-                    progress_sessions.clear()
-                    progress_sessions.update(dict(sorted_sessions[:5]))
+                # Keep in-progress sessions plus 5 most recent completed ones
+                in_progress = {sid: s for sid, s in progress_sessions.items() 
+                             if s.get('status') == 'in_progress'}
+                completed = [(sid, s) for sid, s in progress_sessions.items() 
+                           if s.get('status') != 'in_progress']
+                completed.sort(key=lambda x: x[1]['start_time'], reverse=True)
+                
+                progress_sessions.clear()
+                progress_sessions.update(in_progress)
+                progress_sessions.update(dict(completed[:5]))
             
             # Force garbage collection multiple times
             for _ in range(3):
