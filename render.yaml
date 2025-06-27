@@ -1,47 +1,22 @@
 services:
   - type: web
-    name: greenwatt-intake-system
+    name: greenwatt-intake-clean
     runtime: python
-    buildCommand: "apt-get update && apt-get install -y poppler-utils && pip install -r requirements.txt"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --max-requests 500 --max-requests-jitter 50"
+    plan: starter
+    buildCommand: |
+      apt-get update && apt-get install -y poppler-utils
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python install_signature_fonts.py
+    startCommand: |
+      # Use single worker and enable memory monitoring
+      gunicorn app:app         --bind 0.0.0.0:$PORT         --workers 1         --worker-class sync         --timeout 120         --max-requests 50         --max-requests-jitter 10         --preload
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PORT
-        value: 5000
-      - key: FLASK_ENV
-        value: production
-      # Google Cloud Configuration
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: GOOGLE_SHEETS_ID
-        sync: false
-      - key: GOOGLE_AGENT_SHEETS_ID
-        sync: false
-      - key: GOOGLE_DRIVE_PARENT_FOLDER_ID
-        sync: false
-      - key: GOOGLE_DRIVE_TEMPLATES_FOLDER_ID
-        sync: false
-      # Email Configuration
-      - key: SENDGRID_API_KEY
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
-      - key: EMAIL_TO
-        sync: false
-      - key: SMTP_SERVER
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      # AI Configuration
-      - key: OPENAI_API_KEY
-        sync: false
-      # Twilio Configuration (will be configured later)
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_FROM_NUMBER
-        sync: false
-      - key: TWILIO_INTERNAL_NUMBERS
-        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MALLOC_TRIM_THRESHOLD_
+        value: "0"
+      - key: MALLOC_MMAP_THRESHOLD_
+        value: "16384"
+      - key: GUNICORN_CMD_ARGS
+        value: "--max-requests=50 --max-requests-jitter=10"

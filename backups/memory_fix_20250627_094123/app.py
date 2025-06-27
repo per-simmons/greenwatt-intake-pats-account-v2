@@ -3202,44 +3202,6 @@ def automatic_cleanup():
         except Exception as e:
             print(f"Error in automatic cleanup: {e}")
 
-
-@app.route('/memory-status')
-def memory_status():
-    """Endpoint to check current memory usage"""
-    try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        memory_info = process.memory_info()
-        
-        # Get detailed memory stats
-        memory_stats = {
-            'rss_mb': memory_info.rss / 1024 / 1024,
-            'vms_mb': memory_info.vms / 1024 / 1024,
-            'percent': process.memory_percent(),
-            'available_mb': psutil.virtual_memory().available / 1024 / 1024,
-            'total_mb': psutil.virtual_memory().total / 1024 / 1024,
-            'progress_sessions': len(progress_sessions),
-            'gc_stats': gc.get_stats()
-        }
-        
-        # Force cleanup if memory is high
-        if memory_stats['rss_mb'] > 250:
-            cleanup_old_sessions()
-            gc.collect()
-            
-            # Recalculate after cleanup
-            memory_info_after = process.memory_info()
-            memory_stats['rss_mb_after_cleanup'] = memory_info_after.rss / 1024 / 1024
-            memory_stats['cleaned'] = True
-        else:
-            memory_stats['cleaned'] = False
-        
-        return jsonify(memory_stats)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 # Start background cleanup thread
 cleanup_thread = threading.Thread(target=automatic_cleanup, daemon=True)
 cleanup_thread.start()

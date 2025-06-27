@@ -153,60 +153,51 @@ def complete_progress(session_id, success=True, error=None):
     session['cleanup_time'] = time.time() + 120  # 2 minutes
 
 def cleanup_old_sessions():
-    """Clean up old progress sessions more aggressively"""
+    """Remove old progress sessions and enforce memory limits"""
     current_time = time.time()
-    sessions_to_remove = []
+    to_remove = []
     
+    # First pass: Remove old sessions - MORE AGGRESSIVE
     for session_id, session in progress_sessions.items():
         # Remove if older than 2 minutes OR if marked for cleanup
         cleanup_time = session.get('cleanup_time', session['start_time'] + 120)
         if current_time > cleanup_time:
-            sessions_to_remove.append(session_id)
+            to_remove.append(session_id)
+        # Also remove if session is older than 5 minutes regardless
+        elif current_time - session['start_time'] > 300:
+            to_remove.append(session_id)
     
-    # Remove old sessions
-    for session_id in sessions_to_remove:
+    # Remove identified sessions
+    for session_id in to_remove:
         del progress_sessions[session_id]
     
-    # MORE AGGRESSIVE: Keep only 10 most recent sessions if we have more than 10
-    if len(progress_sessions) > 10:
-        # Sort by start time and keep only the 10 most recent
+    # Second pass: Enforce maximum session limit (keep newest 50 instead of 100)
+    if len(progress_sessions) > 50:
+        # Sort by start time and keep only the newest 50
         sorted_sessions = sorted(progress_sessions.items(), 
                                key=lambda x: x[1]['start_time'], 
                                reverse=True)
         progress_sessions.clear()
-        progress_sessions.update(dict(sorted_sessions[:10]))
+        progress_sessions.update(dict(sorted_sessions[:50]))
     
-    # Log memory status with more detail
+    # Log memory status
     try:
         process = psutil.Process(os.getpid())
         memory_mb = process.memory_info().rss / 1024 / 1024
-        
-        # More aggressive cleanup at lower threshold (250MB instead of 350MB)
-        if memory_mb > 250:
+        if memory_mb > 350:  # Warning at 350MB (lower threshold)
             print(f"⚠️ High memory usage: {memory_mb:.1f}MB - forcing aggressive cleanup")
-            
-            # Clear ALL progress sessions if memory is critical
-            if memory_mb > 300:
-                print(f"🚨 CRITICAL: Clearing all {len(progress_sessions)} progress sessions")
+            # More aggressive cleanup
+            if len(progress_sessions) > 20:
+                sorted_sessions = sorted(progress_sessions.items(), 
+                                       key=lambda x: x[1]['start_time'], 
+                                       reverse=True)
                 progress_sessions.clear()
-            else:
-                # Keep only 5 most recent if memory is high
-                if len(progress_sessions) > 5:
-                    sorted_sessions = sorted(progress_sessions.items(), 
-                                           key=lambda x: x[1]['start_time'], 
-                                           reverse=True)
-                    progress_sessions.clear()
-                    progress_sessions.update(dict(sorted_sessions[:5]))
-            
-            # Force garbage collection multiple times
-            for _ in range(3):
-                gc.collect()
-            
-            # Log memory after cleanup
-            memory_after = process.memory_info().rss / 1024 / 1024
-            print(f"📊 Memory after cleanup: {memory_after:.1f}MB (freed {memory_mb - memory_after:.1f}MB)")
+                progress_sessions.update(dict(sorted_sessions[:20]))
+            gc.collect()
     except:
         pass
+
+@app.route('/progress/<session_id>')
 def get_progress(session_id):
     """Get current progress for a session"""
     cleanup_old_sessions()  # Clean up old sessions
@@ -3201,44 +3192,6 @@ def automatic_cleanup():
                     pass
         except Exception as e:
             print(f"Error in automatic cleanup: {e}")
-
-
-@app.route('/memory-status')
-def memory_status():
-    """Endpoint to check current memory usage"""
-    try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        memory_info = process.memory_info()
-        
-        # Get detailed memory stats
-        memory_stats = {
-            'rss_mb': memory_info.rss / 1024 / 1024,
-            'vms_mb': memory_info.vms / 1024 / 1024,
-            'percent': process.memory_percent(),
-            'available_mb': psutil.virtual_memory().available / 1024 / 1024,
-            'total_mb': psutil.virtual_memory().total / 1024 / 1024,
-            'progress_sessions': len(progress_sessions),
-            'gc_stats': gc.get_stats()
-        }
-        
-        # Force cleanup if memory is high
-        if memory_stats['rss_mb'] > 250:
-            cleanup_old_sessions()
-            gc.collect()
-            
-            # Recalculate after cleanup
-            memory_info_after = process.memory_info()
-            memory_stats['rss_mb_after_cleanup'] = memory_info_after.rss / 1024 / 1024
-            memory_stats['cleaned'] = True
-        else:
-            memory_stats['cleaned'] = False
-        
-        return jsonify(memory_stats)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 # Start background cleanup thread
 cleanup_thread = threading.Thread(target=automatic_cleanup, daemon=True)

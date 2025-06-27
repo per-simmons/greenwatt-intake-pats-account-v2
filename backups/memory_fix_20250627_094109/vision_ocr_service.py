@@ -4,40 +4,34 @@ import io
 import os
 from PIL import Image
 import time
-import gc
-import tempfile
-import contextlib
 
 class VisionOCRService:
-    # Class-level client to reuse across requests
-    _client = None
-    _credentials = None
-    
     def __init__(self, service_account_info):
         """Initialize Google Cloud Vision client with service account credentials"""
-        if not VisionOCRService._credentials:
-            VisionOCRService._credentials = service_account.Credentials.from_service_account_info(
-                service_account_info,
-                scopes=['https://www.googleapis.com/auth/cloud-platform']
-            )
+        self.credentials = service_account.Credentials.from_service_account_info(
+            service_account_info,
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+        self.client = None
     
     def __enter__(self):
         """Context manager entry"""
+        self.client = vision.ImageAnnotatorClient(credentials=self.credentials)
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - no longer creates/destroys clients"""
-        pass
+        """Context manager exit with proper cleanup"""
+        if self.client:
+            try:
+                self.client.close()
+            except:
+                pass  # Ignore cleanup errors
     
-    @classmethod
-    def _get_client(cls):
-        """Get or create shared client instance"""
-        if not cls._client:
-            if not cls._credentials:
-                raise ValueError("VisionOCRService not initialized with credentials")
-            cls._client = vision.ImageAnnotatorClient(credentials=cls._credentials)
-            print("✅ Created shared Vision API client")
-        return cls._client
+    def _get_client(self):
+        """Get or create client"""
+        if not self.client:
+            self.client = vision.ImageAnnotatorClient(credentials=self.credentials)
+        return self.client
     
     def extract_text_from_image(self, image_path):
         """Extract text from image using Vision API document_text_detection"""
@@ -84,10 +78,6 @@ class VisionOCRService:
             import traceback
             traceback.print_exc()
             return ""
-        finally:
-            # Force cleanup
-            del content
-            gc.collect()
     
     def extract_text_from_pdf(self, pdf_path):
         """Extract text from PDF using Vision API - simplified approach to avoid gRPC issues"""
@@ -114,83 +104,30 @@ class VisionOCRService:
                 print("PDF file too large (>50MB), skipping conversion")
                 return ""
             
+            print("Starting PDF conversion...")
+            # Convert PDF pages to images at lower DPI for better performance
+            # Specify poppler path for production environment
+            pages = convert_from_path(
+                pdf_path, 
+                dpi=150,  # Reduced from 300 for better performance
+                poppler_path='/usr/bin'  # Explicit path for production
+            )
+            print(f"Successfully converted PDF to {len(pages)} page(s)")
+            
             full_text = ""
             
-            # Use a proper temp directory
-            with tempfile.TemporaryDirectory() as temp_dir:
-                print("Starting PDF conversion...")
+            for i, page in enumerate(pages):
+                print(f"Processing page {i+1}/{len(pages)}")
+                # Save page as temporary image
+                temp_image_path = f"temp/pdf_page_{i}_vision.png"
+                page.save(temp_image_path, 'PNG')
                 
-                # Process one page at a time to reduce memory usage
-                try:
-                    # Get page count first
-                    from pdf2image import pdfinfo_from_path
-                    info = pdfinfo_from_path(pdf_path, poppler_path='/usr/bin')
-                    page_count = info["Pages"]
-                    print(f"PDF has {page_count} pages")
-                    
-                    # Process each page individually
-                    for page_num in range(1, min(page_count + 1, 11)):  # Limit to 10 pages
-                        print(f"Processing page {page_num}/{min(page_count, 10)}")
-                        
-                        # Convert single page
-                        pages = convert_from_path(
-                            pdf_path, 
-                            dpi=150,  # Reduced DPI
-                            first_page=page_num,
-                            last_page=page_num,
-                            poppler_path='/usr/bin'
-                        )
-                        
-                        if pages:
-                            page = pages[0]
-                            # Save page as temporary image
-                            temp_image_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                            page.save(temp_image_path, 'PNG')
-                            
-                            # Immediately close the PIL image to free memory
-                            page.close()
-                            del pages
-                            gc.collect()
-                            
-                            # Extract text from this page using Vision
-                            page_text = self.extract_text_from_image(temp_image_path)
-                            full_text += page_text + "\n"
-                            
-                            # Remove temp file immediately
-                            try:
-                                os.remove(temp_image_path)
-                            except:
-                                pass
-                        
-                except Exception as e:
-                    print(f"Error processing PDF pages individually: {e}")
-                    # Fallback to all-at-once conversion if page-by-page fails
-                    pages = convert_from_path(
-                        pdf_path, 
-                        dpi=150,
-                        poppler_path='/usr/bin'
-                    )
-                    print(f"Fallback: converted PDF to {len(pages)} page(s)")
-                    
-                    for i, page in enumerate(pages[:10]):  # Limit to 10 pages
-                        print(f"Processing page {i+1}/{min(len(pages), 10)}")
-                        temp_image_path = os.path.join(temp_dir, f"page_{i}.png")
-                        page.save(temp_image_path, 'PNG')
-                        page.close()  # Close PIL image
-                        
-                        page_text = self.extract_text_from_image(temp_image_path)
-                        full_text += page_text + "\n"
-                        
-                        try:
-                            os.remove(temp_image_path)
-                        except:
-                            pass
-                    
-                    # Clean up all pages
-                    for page in pages:
-                        page.close()
-                    del pages
-                    gc.collect()
+                # Extract text from this page using Vision
+                page_text = self.extract_text_from_image(temp_image_path)
+                full_text += page_text + "\n"
+                
+                # Clean up temp file
+                os.remove(temp_image_path)
             
             print(f"PDF processing complete. Extracted {len(full_text)} characters")
             return full_text
@@ -200,8 +137,6 @@ class VisionOCRService:
             import traceback
             traceback.print_exc()
             return ""
-        finally:
-            gc.collect()
 
 def process_utility_bill_with_vision(file_path, service_account_info):
     """Main function to process utility bill using Google Vision API"""
@@ -238,5 +173,3 @@ def process_utility_bill_with_vision(file_path, service_account_info):
         import traceback
         traceback.print_exc()
         return ""
-    finally:
-        gc.collect()
