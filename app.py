@@ -101,6 +101,7 @@ def create_progress_session():
         'error': None,
         'status': 'in_progress'  # Mark as actively processing
     }
+    print(f"📝 Created new progress session: {session_id}")
     return session_id
 
 def update_progress(session_id, step, step_name, step_description, percentage=None):
@@ -142,6 +143,9 @@ def complete_progress(session_id, success=True, error=None):
     if success:
         session['step_name'] = 'Complete'
         session['step_description'] = 'Submission processed successfully'
+        print(f"✅ Completed progress session: {session_id}")
+    else:
+        print(f"❌ Failed progress session: {session_id} - Error: {error}")
     
     # Clean up result data to save memory (keep only essential info)
     if 'result' in session:
@@ -177,6 +181,7 @@ def cleanup_old_sessions():
     
     # Remove old sessions
     for session_id in sessions_to_remove:
+        print(f"🗑️ Removing old session: {session_id}")
         del progress_sessions[session_id]
     
     # Keep more sessions (20 instead of 10) and NEVER remove in_progress ones
@@ -209,11 +214,20 @@ def cleanup_old_sessions():
                 
                 print(f"🚨 CRITICAL memory: {in_progress_count} active, {completed_count} completed sessions")
                 
-                # Remove only completed/abandoned sessions
-                sessions_to_keep = {sid: s for sid, s in progress_sessions.items() 
-                                  if s.get('status') == 'in_progress'}
-                progress_sessions.clear()
-                progress_sessions.update(sessions_to_keep)
+                # Only clear completed sessions that are older than 5 minutes
+                current_time = time.time()
+                cleared_count = 0
+                for sid, session in list(progress_sessions.items()):
+                    if (session.get('status') == 'completed' and 
+                        current_time - session.get('completed_time', session['start_time']) > 300):
+                        del progress_sessions[sid]
+                        cleared_count += 1
+                        print(f"   Cleared old completed session: {sid}")
+                
+                if cleared_count > 0:
+                    print(f"   Total cleared: {cleared_count} sessions")
+                else:
+                    print(f"   No old completed sessions to clear")
             else:
                 # Keep in-progress sessions plus 5 most recent completed ones
                 in_progress = {sid: s for sid, s in progress_sessions.items() 
@@ -235,9 +249,10 @@ def cleanup_old_sessions():
             print(f"📊 Memory after cleanup: {memory_after:.1f}MB (freed {memory_mb - memory_after:.1f}MB)")
     except:
         pass
+@app.route('/progress/<session_id>')
 def get_progress(session_id):
     """Get current progress for a session"""
-    cleanup_old_sessions()  # Clean up old sessions
+    # Removed cleanup_old_sessions() to prevent race conditions
     
     if session_id not in progress_sessions:
         return jsonify({'error': 'Session not found'}), 404

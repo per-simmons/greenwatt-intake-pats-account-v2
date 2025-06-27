@@ -1,5 +1,12 @@
 # Memory Issue Fixes - GreenWatt Intake Form
 
+## 🚨 CRITICAL UPDATE - 404 ERRORS ARE NOT MEMORY RELATED
+
+**Date**: 2025-06-27 14:30 UTC  
+**Important**: If you're here because of 404 errors on the progress endpoint, the issue is NOT memory-related. The `/progress/<session_id>` route is completely missing from app.py. See [CRITICAL_404_FIX.md](./CRITICAL_404_FIX.md) for the solution.
+
+---
+
 ## Problem Statement
 
 The GreenWatt intake form application is experiencing critical memory exhaustion issues on Render.com's 512MB instance, causing service crashes and preventing form submissions.

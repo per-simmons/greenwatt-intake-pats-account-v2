@@ -1,5 +1,18 @@
 # Memory Leak Fixes Documentation - GreenWatt Intake Form
 
+## 🚨 CRITICAL UPDATE - 404 ERRORS NOT CAUSED BY MEMORY CLEANUP
+
+**Date**: 2025-06-27 14:30 UTC  
+**Critical Discovery**: The `/progress/<session_id>` route is **COMPLETELY MISSING** from app.py. This is why ALL progress checks return 404 - the endpoint doesn't exist! See [CRITICAL_404_FIX.md](./CRITICAL_404_FIX.md) for the actual fix needed.
+
+**Key Points**:
+- The 404 errors are NOT caused by session cleanup
+- The `get_progress()` function exists but has NO `@app.route` decorator  
+- Previous "emergency fixes" couldn't work because the endpoint was never accessible
+- Memory fixes below are still valid but didn't address the real problem
+
+---
+
 ## Investigation Summary
 
 **Date**: 2025-06-27  
