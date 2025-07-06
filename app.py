@@ -1843,11 +1843,15 @@ def submit_form():
             'utility_provider': request.form.get('utility_provider'),
             'poid': request.form.get('poid', ''),
             'agent_id': request.form.get('agent_id'),
-            'poa_agreement': request.form.get('poa_agreement') == 'on'
+            'poa_agreement': request.form.get('poa_agreement') == 'on',
+            'sms_consent': request.form.get('sms_consent') == 'on'
         }
         
         if not form_data['poa_agreement']:
             return jsonify({'error': 'POA agreement must be accepted'}), 400
+        
+        if not form_data['sms_consent']:
+            return jsonify({'error': 'SMS consent must be accepted'}), 400
         
         # Get the utility bill file
         if 'utility_bill' not in request.files:
