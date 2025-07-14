@@ -32,9 +32,11 @@ class SMSService:
             message_body = f"""
 Hello {customer_name},
 
-Thank you for your interest in community solar with GreenWatt USA! 
+Thank you for your interest in GreenWatt USA's Community Solar program!
 
-Please reply with Y to confirm your participation in our Community Distributed Generation (CDG) program, or N if you wish to opt out.
+Please reply Y to confirm your participation in our Community Distributed Generation (CDG) bill credit program, which guarantees up to 10% savings off your electricity bill.
+
+Reply N if you do not wish to participate at this time.
 
 Your response helps us finalize your enrollment.
 
@@ -80,7 +82,7 @@ GreenWatt USA Team
                 formatted_phone = self._format_phone_number(phone.strip())
                 
                 message_body = f"""
-🌱 NEW GREENWATT SUBMISSION
+NEW GREENWATT SUBMISSION
 
 Customer: {submission_data.get('customer_name', 'N/A')}
 Agent: {submission_data.get('agent_name', 'N/A')}

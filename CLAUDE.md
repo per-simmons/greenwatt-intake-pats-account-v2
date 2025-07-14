@@ -102,10 +102,12 @@ Email notifications are sent to internal team members (up to 3) using SendGrid A
 
 ### SMS Verification System
 Customer verification SMS is triggered immediately after form submission:
-- Sends Y/N participation confirmation request
+- Sends Y/N participation confirmation request for CDG bill credit program (10% savings guarantee)
 - Logs SMS status in Google Sheets with timestamps
 - Handles responses via Twilio webhook
 - Tracks: SMS Sent, SMS Sent Timestamp, SMS Response, SMS Response Timestamp, Phone Number, Message SID
+
+**📱 For detailed Twilio integration documentation, see: [TWILIO_INTEGRATION.md](./TWILIO_INTEGRATION.md)**
 
 ## Environment Configuration
 
@@ -279,11 +281,13 @@ When `test_utility_bill` appears in filename or processing fails, the system ret
 - Y/N response parsing via Twilio webhook ✅
 - Internal team SMS notifications ✅ 
 - Enhanced email notifications ✅
-- **PENDING JASON:** 
-  - Purchase Twilio phone number & A2P 10DLC registration
+- **PENDING:** 
+  - Purchase Twilio phone number & A2P 10DLC registration (rejected - needs resubmission)
   - Add SMS response columns to Google Sheets structure
   - SMS status tracking (sent/pending/responded)
   - Phone number → submission row mapping
+  
+**📱 See [TWILIO_INTEGRATION.md](./TWILIO_INTEGRATION.md) for detailed implementation guide and A2P 10DLC resubmission strategy**
 
 **Phase 5 Pending**: Testing & Deployment
 - Comprehensive test suite

@@ -50,13 +50,14 @@ class GoogleSheetsService:
             'Utility Bill Link',
             'POA Link',
             'Agreement Link',
-            'Terms & Conditions Link'
+            'Terms & Conditions Link',
+            'CDG Enrollment Status'
         ]
         
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:X1'
+                range='A1:Y1'
             ).execute()
             
             existing_values = result.get('values', [])
@@ -70,7 +71,7 @@ class GoogleSheetsService:
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range='A1:X1',
+                    range='A1:Y1',
                     valueInputOption='RAW',
                     body=body
                 ).execute()
@@ -125,7 +126,7 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:X',
+                range='A:Z',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
@@ -256,7 +257,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:X'
+                range='A:Y'
             ).execute()
             
             return result.get('values', [])
@@ -443,7 +444,7 @@ class GoogleSheetsService:
             return None
     
     def force_update_headers(self):
-        """Force update headers to new 24-column structure (one-time fix)"""
+        """Force update headers to new 25-column structure (one-time fix)"""
         try:
             headers = [
                 'Unique ID',
@@ -469,7 +470,8 @@ class GoogleSheetsService:
                 'Utility Bill Link',
                 'POA Link',
                 'Agreement Link',
-                'Terms & Conditions Link'
+                'Terms & Conditions Link',
+                'CDG Enrollment Status'
             ]
             
             # Clear the entire first row first
@@ -500,12 +502,12 @@ class GoogleSheetsService:
             
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:X1',
+                range='A1:Y1',
                 valueInputOption='RAW',
                 body=body
             ).execute()
             
-            print("✅ Successfully force-updated headers to new 24-column structure")
+            print("✅ Successfully force-updated headers to new 25-column structure")
             
             # Apply formatting
             self._format_header_row()
@@ -663,3 +665,80 @@ class GoogleSheetsService:
     def clear_cache(self):
         """Clear the lookup cache"""
         self.cache.clear()
+    
+    def log_sms_sent(self, row_index):
+        """Update CDG Enrollment Status when SMS is sent"""
+        try:
+            # Update column Z (CDG Enrollment Status) to PENDING when SMS is sent
+            body = {
+                'values': [['PENDING']]
+            }
+            
+            result = self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=f'Z{row_index}',
+                valueInputOption='RAW',
+                body=body
+            ).execute()
+            
+            print(f"✅ CDG Enrollment Status set to PENDING for row {row_index}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error updating enrollment status: {e}")
+            return False
+    
+    def log_sms_response(self, phone, response):
+        """Find row by phone number and update CDG Enrollment Status"""
+        try:
+            # Get all data to find the row with matching phone number
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range='A:Z'
+            ).execute()
+            
+            values = result.get('values', [])
+            
+            # Phone number is in column G (index 6)
+            row_found = False
+            for idx, row in enumerate(values):
+                if idx == 0:  # Skip header row
+                    continue
+                    
+                # Check if this row has the matching phone number in column G
+                if len(row) > 6 and row[6] == phone:
+                    row_number = idx + 1  # Convert to 1-based index
+                    
+                    # Determine enrollment status based on response
+                    if response.upper() in ['Y', 'YES']:
+                        status = 'ENROLLED'
+                    elif response.upper() in ['N', 'NO']:
+                        status = 'DECLINED'
+                    else:
+                        status = f'INVALID: {response}'
+                    
+                    # Update column Z (CDG Enrollment Status)
+                    body = {
+                        'values': [[status]]
+                    }
+                    
+                    result = self.service.spreadsheets().values().update(
+                        spreadsheetId=self.spreadsheet_id,
+                        range=f'Z{row_number}',
+                        valueInputOption='RAW',
+                        body=body
+                    ).execute()
+                    
+                    print(f"✅ CDG Enrollment Status updated for row {row_number}: {phone} → {status}")
+                    row_found = True
+                    break
+            
+            if not row_found:
+                print(f"⚠️  No matching row found for phone number: {phone}")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error logging SMS response: {e}")
+            return False

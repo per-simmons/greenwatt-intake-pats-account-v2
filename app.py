@@ -1736,12 +1736,22 @@ def process_submission_background(session_id, form_data, file_path):
             utility_bill_link,              # Utility Bill Link (U) - shifted left
             poa_link,                        # POA Link (V) - shifted left
             agreement_link,                  # Agreement Link (W) - shifted left
-            agency_agreement_link              # Terms & Conditions Link (X) - shifted left
+            agency_agreement_link,              # Terms & Conditions Link (X)
+            ''                              # CDG Enrollment Status (Y) - starts empty, updated when SMS is sent
         ]
         
         update_progress(session_id, 6, "Logging Data", "Writing to Google Sheets", 90)
+        row_number = None
         try:
             result = sheets_service.append_row(sheet_data)
+            # Extract row number from result
+            if result and 'updates' in result and 'updatedRange' in result['updates']:
+                import re
+                updated_range = result['updates']['updatedRange']
+                row_match = re.search(r'!A(\d+):Z\d+', updated_range)
+                if row_match:
+                    row_number = int(row_match.group(1))
+                    print(f"Data written to row {row_number}")
         except Exception as e:
             print(f"Sheet insertion failed: {e}")
         
@@ -1769,6 +1779,10 @@ def process_submission_background(session_id, form_data, file_path):
                 customer_name=form_data['contact_name']
             )
             print(f"SMS sent: {sms_response}")
+            
+            # Log SMS sent status to Google Sheets
+            if sms_response and sms_response.get('success') and row_number:
+                sheets_service.log_sms_sent(row_index=row_number)
         except Exception as sms_error:
             print(f"SMS failed: {sms_error}")
             
@@ -2634,12 +2648,15 @@ def sms_webhook():
             timestamp = response_data['timestamp']
             
             # Update Google Sheets with SMS response data
-            # Note: This would require enhancing Google Sheets service to support SMS response columns
             print(f"📊 SMS Response to log: {customer_phone} → {parsed_response}")
             print(f"    Message SID: {message_sid}")
             print(f"    Timestamp: {timestamp}")
             
-            # TODO: Implement sheets_service.log_sms_response() method
+            # Log the SMS response to Google Sheets
+            sheets_service.log_sms_response(
+                phone=customer_phone,
+                response=parsed_response
+            )
             
         except Exception as e:
             print(f"⚠️  Error logging SMS response to sheets: {e}")
