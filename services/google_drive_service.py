@@ -29,7 +29,8 @@ class GoogleDriveService:
         try:
             folder = self.service.files().create(
                 body=file_metadata,
-                fields='id'
+                fields='id',
+                supportsAllDrives=True
             ).execute()
             
             folder_id = folder.get('id')
@@ -39,7 +40,8 @@ class GoogleDriveService:
                 body={
                     'type': 'anyone',
                     'role': 'reader'
-                }
+                },
+                supportsAllDrives=True
             ).execute()
             
             return folder_id
@@ -61,7 +63,8 @@ class GoogleDriveService:
             file = self.service.files().create(
                 body=file_metadata,
                 media_body=media,
-                fields='id'
+                fields='id',
+                supportsAllDrives=True
             ).execute()
             
             file_id = file.get('id')
@@ -71,7 +74,8 @@ class GoogleDriveService:
                 body={
                     'type': 'anyone',
                     'role': 'reader'
-                }
+                },
+                supportsAllDrives=True
             ).execute()
             
             return file_id
@@ -84,7 +88,7 @@ class GoogleDriveService:
     
     def delete_file(self, file_id):
         try:
-            self.service.files().delete(fileId=file_id).execute()
+            self.service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
             return True
         except Exception as e:
             print(f"Error deleting file: {e}")
@@ -110,7 +114,9 @@ class GoogleDriveService:
                     q=query,
                     pageSize=page_size,
                     fields="nextPageToken, files(id, name, size, createdTime, mimeType, parents)",
-                    pageToken=page_token
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
                 ).execute()
                 
                 files.extend(response.get('files', []))

@@ -37,10 +37,10 @@ Configure these environment variables in Render.com dashboard:
 ### **Google Cloud Platform**
 ```bash
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}  # Full JSON credential
-GOOGLE_SHEETS_ID=11hjZE80n0zE9qfRtlTyg4n3QMm1p1WIkqp9Be8Zgi6o
+GOOGLE_SHEETS_ID=1sx7oULKh41KMPH47LolCF9lv7h7-kDwscAoZoVfhDw0
 GOOGLE_AGENT_SHEETS_ID=1iwDPUL58BMtrHL0wQXgu9kcscriTNGYcqP8ATo8Oo-I
-GOOGLE_DRIVE_PARENT_FOLDER_ID=1i1SAHRnrgA-eWKgaZaShwF3zzOqewO3W
-GOOGLE_DRIVE_TEMPLATES_FOLDER_ID=1YPUFTwKP5uzOMTKp1OZcWuwCeZA2nFqE
+GOOGLE_DRIVE_PARENT_FOLDER_ID=1upNlAEg1rf7NXjx7edfZN1xHRUxOCgCc
+GOOGLE_DRIVE_TEMPLATES_FOLDER_ID=1zex9SAIqo_xn75w-5ZjbGIWMRiwGtwi0
 ```
 
 ### **Email & SMS**

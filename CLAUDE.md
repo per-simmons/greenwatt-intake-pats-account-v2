@@ -132,10 +132,10 @@ The application requires the following system packages:
 ```bash
 # Google Cloud
 GOOGLE_SERVICE_ACCOUNT_JSON="{...json content...}"
-GOOGLE_SHEETS_ID="spreadsheet_id_here"
-GOOGLE_DRIVE_PARENT_FOLDER_ID="folder_id_here"
+GOOGLE_SHEETS_ID="1R1bZuDhToHg1bIQtZUWCXQHaCJq8jsXeuKuSFBHdhpw"
+GOOGLE_DRIVE_PARENT_FOLDER_ID="12lCtTAUVxgLuwjW9X81P4-hFr1FC3uJj"
 GOOGLE_AGENT_SHEETS_ID="agent_spreadsheet_id_here"
-GOOGLE_DRIVE_TEMPLATES_FOLDER_ID="templates_folder_id_here"
+GOOGLE_DRIVE_TEMPLATES_FOLDER_ID="1-XPW8PVhXAPUsn2eIsBA_4p7ckm150lS"
 
 # Email/SMS
 SENDGRID_API_KEY="SG.your_sendgrid_api_key_here"
@@ -158,15 +158,17 @@ DISABLE_SSL_VERIFICATION="true"  # Only for local development to bypass corporat
 - **Service Account Email**: `greenwatt-intake-service@greenwatt-intake-form.iam.gserviceaccount.com`
 
 ### Google Sheets
-- **Intake Log**: [URL](https://docs.google.com/spreadsheets/d/11hjZE80n0zE9qfRtlTyg4n3QMm1p1WIkqp9Be8Zgi6o) ID: `11hjZE80n0zE9qfRtlTyg4n3QMm1p1WIkqp9Be8Zgi6o`
+- **Intake Log**: [URL](https://docs.google.com/spreadsheets/d/1R1bZuDhToHg1bIQtZUWCXQHaCJq8jsXeuKuSFBHdhpw) ID: `1R1bZuDhToHg1bIQtZUWCXQHaCJq8jsXeuKuSFBHdhpw`
 - **Submissions tab**: Raw dump of every submission
 - **Developer_Mapping tab**: Links Developer + Utility → Agreement
 - **Utilities tab**: Controls which utilities appear
 - **Agents Sheet**: [URL](https://docs.google.com/spreadsheets/d/1iwDPUL58BMtrHL0wQXgu9kcscriTNGYcqP8ATo8Oo-I) ID: `1iwDPUL58BMtrHL0wQXgu9kcscriTNGYcqP8ATo8Oo-I`
 
-### Google Drive
-- **Signed Docs root**: Final PDFs + template store ID: `1i1SAHRnrgA-eWKgaZaShwF3zzOqewO3W`
-- **Templates/**: Sub-folder holding all agreement PDFs Path: `GreenWatt_Signed_Docs/Templates/`
+### Google Drive (Shared Drive)
+- **IMPORTANT**: These folders MUST be in a Shared Drive (Team Drive), not regular My Drive folders
+- **Signed Docs root**: Final PDFs + template store ID: `12lCtTAUVxgLuwjW9X81P4-hFr1FC3uJj`
+- **Templates folder**: Agreement PDFs storage ID: `1-XPW8PVhXAPUsn2eIsBA_4p7ckm150lS`
+- **Service Account Access**: greenwatt-intake-service@greenwatt-intake-form.iam.gserviceaccount.com must be added as member with "Content Manager" role
 
 ### Twilio API
 - **Account SID**: `AC_your_twilio_account_sid_here`

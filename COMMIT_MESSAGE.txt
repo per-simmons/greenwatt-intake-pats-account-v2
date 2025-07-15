@@ -1,0 +1,9 @@
+Fix Google Drive Shared Drive access - add supportsAllDrives parameter
+
+- Updated GoogleDriveService to support Shared Drives
+- Added supportsAllDrives=True to all Drive API calls
+- Added includeItemsFromAllDrives=True to list operations
+- Updated documentation with new Shared Drive folder IDs
+- Updated CLAUDE.md to note Shared Drive requirement
+
+This fixes the "File not found" error when accessing Shared Drive folders.
