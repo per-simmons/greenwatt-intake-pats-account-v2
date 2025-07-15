@@ -109,11 +109,12 @@ Each notification includes:
 - Professional HTML formatting with GreenWatt branding
 
 ### SMS Verification System
-Customer verification SMS is triggered immediately after form submission:
-- Sends Y/N participation confirmation request for CDG bill credit program (10% savings guarantee)
+Customer verification SMS is triggered after form submission only if SMS consent checkbox is checked:
+- SMS consent is optional - users can submit without agreeing to receive SMS
+- If consent given, sends Y/N participation confirmation request for CDG bill credit program (10% savings guarantee)
 - Logs SMS status in Google Sheets with timestamps
 - Handles responses via Twilio webhook
-- Tracks: SMS Sent, SMS Sent Timestamp, SMS Response, SMS Response Timestamp, Phone Number, Message SID
+- Tracks enrollment status in Column Y: PENDING → ENROLLED/DECLINED
 
 **📱 For detailed Twilio integration documentation, see: [TWILIO_INTEGRATION.md](./TWILIO_INTEGRATION.md)**
 

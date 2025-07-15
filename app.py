@@ -1774,20 +1774,23 @@ def process_submission_background(session_id, form_data, file_path):
             sales_manager_email=agent_info['sales_manager_email']
         )
         
-        # Send SMS verification to customer
-        update_progress(session_id, 7, "Notifications", "Sending SMS verification", 98)
-        try:
-            sms_response = sms_service.send_customer_verification_sms(
-                customer_phone=form_data['phone'],
-                customer_name=form_data['contact_name']
-            )
-            print(f"SMS sent: {sms_response}")
-            
-            # Log SMS sent status to Google Sheets
-            if sms_response and sms_response.get('success') and row_number:
-                sheets_service.log_sms_sent(row_index=row_number)
-        except Exception as sms_error:
-            print(f"SMS failed: {sms_error}")
+        # Send SMS verification to customer only if consent was given
+        if form_data['sms_consent']:
+            update_progress(session_id, 7, "Notifications", "Sending SMS verification", 98)
+            try:
+                sms_response = sms_service.send_customer_verification_sms(
+                    customer_phone=form_data['phone'],
+                    customer_name=form_data['contact_name']
+                )
+                print(f"SMS sent: {sms_response}")
+                
+                # Log SMS sent status to Google Sheets
+                if sms_response and sms_response.get('success') and row_number:
+                    sheets_service.log_sms_sent(row_index=row_number)
+            except Exception as sms_error:
+                print(f"SMS failed: {sms_error}")
+        else:
+            print("SMS consent not given - skipping customer verification SMS")
             
         # Send SMS notification to internal team
         update_progress(session_id, 7, "Notifications", "Notifying team", 99)
@@ -1866,9 +1869,6 @@ def submit_form():
         
         if not form_data['poa_agreement']:
             return jsonify({'error': 'POA agreement must be accepted'}), 400
-        
-        if not form_data['sms_consent']:
-            return jsonify({'error': 'SMS consent must be accepted'}), 400
         
         # Get the utility bill file
         if 'utility_bill' not in request.files:
