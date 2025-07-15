@@ -92,7 +92,15 @@ Electronic signatures are applied as text overlays using customer names with Ari
 POA documents use unique identifiers in format `POA-{YYYYMMDDHHMMS}-{uuid_hex}` (e.g., POA-20250617141754-cf4bc8) for tracking and auditing purposes.
 
 ### Email Notification System
-Email notifications are sent to internal team members (up to 3) using SendGrid API for reliable delivery. Each notification includes:
+Email notifications are sent to submitting agents, sales managers, and operations team using SendGrid API for reliable delivery. The system uses the Agent ID Sheet to look up email addresses:
+
+**Recipients:**
+- **TO**: Submitting agent's email (Column D in Agent ID Sheet)
+- **TO**: Sales manager's email (Column G in Agent ID Sheet)
+- **TO**: greenwatt.intake@gmail.com (always included)
+- **CC**: operations@greenwattusa.com (hardcoded)
+
+Each notification includes:
 - Agent Name
 - Customer Name
 - Utility

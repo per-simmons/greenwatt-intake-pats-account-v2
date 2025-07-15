@@ -8,14 +8,14 @@
 ### 1. Twilio Account Configuration
 - **Account SID**: [CONFIGURED IN ENVIRONMENT]
 - **Phone Number**: +15858889205 (585-888-9205)
-- **Phone Number SID**: PN9c80988b5c232332d7d6849f88cc33ca
+- **Phone Number SID**: [CONFIGURED]
 - **Status**: Active and in-use
 
 ### 2. A2P 10DLC Registration
 - **Status**: ✅ APPROVED AND REGISTERED
-- **Campaign SID**: CMc1ffa983868c245242f7a34318a91402
-- **Brand Registration SID**: BN9460de60840dbbf9664961c978085cf0
-- **Messaging Service SID**: MG45801b20cca232781509a8c3337288f6
+- **Campaign SID**: [CONFIGURED]
+- **Brand Registration SID**: [CONFIGURED]
+- **Messaging Service SID**: [CONFIGURED]
 - **Service Name**: Low Volume Mixed A2P Messaging Service
 - **Registration Date**: July 9, 2025, 2:51:32 PM
 

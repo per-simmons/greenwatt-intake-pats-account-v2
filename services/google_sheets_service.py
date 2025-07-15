@@ -267,24 +267,41 @@ class GoogleSheetsService:
     
     def get_agent_name(self, agent_id):
         """Look up agent name from agent ID using Agents sheet"""
-        cache_key = f"agent_{agent_id}"
+        # For backward compatibility, get full info and return just the name
+        agent_info = self.get_agent_info(agent_id)
+        return agent_info.get('name', 'Unknown')
+    
+    def get_agent_info(self, agent_id):
+        """Look up agent information from agent ID using Agents sheet
+        Returns dict with: name, email, sales_manager_email
+        """
+        cache_key = f"agent_info_{agent_id}"
         if cache_key in self.cache:
             return self.cache[cache_key]
         
         # Hardcoded fallback for specific agent IDs
         hardcoded_agents = {
-            "0000": "Jason Pritchard"
+            "0000": {
+                "name": "Jason Pritchard",
+                "email": "jason@greenwattusa.com",
+                "sales_manager_email": "jason@greenwattusa.com"
+            },
+            "0001": {
+                "name": "Pat Simmons (Testing)",
+                "email": "pat.testing@example.com",
+                "sales_manager_email": "pat.testing@example.com"
+            }
         }
         
         if agent_id in hardcoded_agents:
-            agent_name = hardcoded_agents[agent_id]
-            self.cache[cache_key] = agent_name
-            print(f"Found agent {agent_id} -> {agent_name} (hardcoded)")
-            return agent_name
+            agent_info = hardcoded_agents[agent_id]
+            self.cache[cache_key] = agent_info
+            print(f"Found agent {agent_id} -> {agent_info['name']} (hardcoded)")
+            return agent_info
             
         try:
-            # Try both sheet name variations and column arrangements
-            sheet_ranges = ["Agents!A:B", "Sheet1!A:B"]
+            # Try both sheet name variations - now getting columns A through G
+            sheet_ranges = ["Agents!A:G", "Sheet1!A:G"]
             
             for sheet_range in sheet_ranges:
                 try:
@@ -296,40 +313,26 @@ class GoogleSheetsService:
                     if not rows or len(rows) < 2:
                         continue
                     
-                    # Skip header row and check column arrangement
-                    header = rows[0] if len(rows[0]) >= 2 else []
+                    # Skip header row
+                    if len(rows) < 2:
+                        continue
+                    
                     data_rows = rows[1:]
                     
-                    # Determine column order based on header
-                    if len(header) >= 2:
-                        if "ID" in header[0] or "id" in header[0].lower():
-                            # Column A is ID, Column B is Name
-                            lookup = {r[0]: r[1] for r in data_rows if len(r) >= 2}
-                        else:
-                            # Column A is Name, Column B is ID (reversed)
-                            lookup = {r[1]: r[0] for r in data_rows if len(r) >= 2}
-                    else:
-                        # No clear header, try both arrangements
-                        # First try: A=ID, B=Name
-                        lookup_standard = {r[0]: r[1] for r in data_rows if len(r) >= 2}
-                        # Second try: A=Name, B=ID 
-                        lookup_reversed = {r[1]: r[0] for r in data_rows if len(r) >= 2}
-                        
-                        # Test which arrangement works by checking if agent_id exists
-                        if agent_id in lookup_standard:
-                            lookup = lookup_standard
-                        elif agent_id in lookup_reversed:
-                            lookup = lookup_reversed
-                        else:
-                            lookup = lookup_standard  # Default fallback
-                    
-                    agent_name = lookup.get(agent_id, "Unknown")
-                    
-                    # Cache the result if found
-                    if agent_name != "Unknown":
-                        self.cache[cache_key] = agent_name
-                        print(f"Found agent {agent_id} -> {agent_name} in {sheet_range}")
-                        return agent_name
+                    # Look for the agent by ID in column A
+                    for row in data_rows:
+                        if len(row) >= 1 and row[0] == agent_id:
+                            # Found the agent, extract info from columns
+                            agent_info = {
+                                "name": row[1] if len(row) > 1 else "Unknown",
+                                "email": row[3] if len(row) > 3 else "",  # Column D (index 3)
+                                "sales_manager_email": row[6] if len(row) > 6 else ""  # Column G (index 6)
+                            }
+                            
+                            # Cache the result
+                            self.cache[cache_key] = agent_info
+                            print(f"Found agent {agent_id} -> {agent_info['name']} with email {agent_info['email']}")
+                            return agent_info
                         
                 except Exception as sheet_error:
                     print(f"Failed to access {sheet_range}: {sheet_error}")
@@ -337,12 +340,21 @@ class GoogleSheetsService:
             
             # If we get here, agent not found in any sheet
             print(f"Agent {agent_id} not found in any sheet")
-            self.cache[cache_key] = "Unknown"
-            return "Unknown"
+            agent_info = {
+                "name": "Unknown",
+                "email": "",
+                "sales_manager_email": ""
+            }
+            self.cache[cache_key] = agent_info
+            return agent_info
             
         except Exception as e:
             print(f"Error looking up agent name for {agent_id}: {e}")
-            return "Unknown"
+            return {
+                "name": "Unknown",
+                "email": "",
+                "sales_manager_email": ""
+            }
     
     def get_active_utilities(self):
         """Get list of active utilities from Utilities sheet"""

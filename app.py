@@ -1704,8 +1704,9 @@ def process_submission_background(session_id, form_data, file_path):
         # Step 6: Logging Data (85-95%)
         update_progress(session_id, 6, "Logging Data", "Preparing submission data", 87)
         
-        # Get agent name and other data
-        agent_name = sheets_service.get_agent_name(form_data['agent_id'])
+        # Get agent info (name, email, sales manager email) and other data
+        agent_info = sheets_service.get_agent_info(form_data['agent_id'])
+        agent_name = agent_info['name']
         utility_name_final = ocr_data.get('utility_name', form_data['utility_provider'])
         unique_id = generate_unique_id()
         poa_id_generated = f"POA-{timestamp}-{unique_id.split('-')[-1]}"
@@ -1768,7 +1769,9 @@ def process_submission_background(session_id, form_data, file_path):
             customer_name=form_data['account_name'],
             utility=form_data['utility_provider'],
             signed_date=submission_date.strftime('%Y-%m-%d'),
-            annual_usage=ocr_data.get('annual_usage', 'N/A')
+            annual_usage=ocr_data.get('annual_usage', 'N/A'),
+            agent_email=agent_info['email'],
+            sales_manager_email=agent_info['sales_manager_email']
         )
         
         # Send SMS verification to customer

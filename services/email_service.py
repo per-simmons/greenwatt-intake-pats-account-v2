@@ -4,10 +4,10 @@ from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-def send_notification_email(agent_name, customer_name, utility, signed_date, annual_usage):
+def send_notification_email(agent_name, customer_name, utility, signed_date, annual_usage, agent_email=None, sales_manager_email=None):
     """
-    Send notification email to internal team using SendGrid API.
-    Sends to up to 3 team members with professional HTML formatting.
+    Send notification email to agent, sales manager, and operations team using SendGrid API.
+    Supports multiple recipients with CC functionality.
     """
     try:
         # Handle SSL verification for development environments
@@ -23,10 +23,23 @@ def send_notification_email(agent_name, customer_name, utility, signed_date, ann
             print("Warning: SENDGRID_API_KEY not configured - skipping email notification")
             return False
         
-        # Email recipients - internal team members
-        internal_emails = [
-            "greenwatt.intake@gmail.com"   # Primary intake email
-        ]
+        # Build recipient list based on available email addresses
+        to_emails = []
+        
+        # Add agent email if provided
+        if agent_email and agent_email.strip():
+            to_emails.append(agent_email.strip())
+        
+        # Add sales manager email if provided
+        if sales_manager_email and sales_manager_email.strip():
+            to_emails.append(sales_manager_email.strip())
+        
+        # Always include greenwatt.intake@gmail.com
+        if "greenwatt.intake@gmail.com" not in to_emails:
+            to_emails.append("greenwatt.intake@gmail.com")
+        
+        # CC operations team (hardcoded)
+        cc_emails = ["operations@greenwattusa.com"]
         
         # Professional HTML email template with GreenWatt branding
         html_content = f"""
@@ -108,18 +121,23 @@ def send_notification_email(agent_name, customer_name, utility, signed_date, ann
         # Create SendGrid message - use verified sender identity
         message = Mail(
             from_email='greenwatt.intake@gmail.com',  # Use verified sender
-            to_emails=internal_emails,
+            to_emails=to_emails,
             subject=f'🌱 New Submission: {customer_name} ({utility})',
             html_content=html_content,
             plain_text_content=text_content
         )
+        
+        # Add CC recipients
+        for cc_email in cc_emails:
+            message.add_cc(cc_email)
         
         # Send email via SendGrid
         sg = SendGridAPIClient(api_key=api_key)
         response = sg.send(message)
         
         print(f"✅ Email notification sent successfully via SendGrid")
-        print(f"   Recipients: {', '.join(internal_emails)}")
+        print(f"   TO: {', '.join(to_emails)}")
+        print(f"   CC: {', '.join(cc_emails)}")
         print(f"   Status Code: {response.status_code}")
         print(f"   Customer: {customer_name} ({utility})")
         
