@@ -35,14 +35,8 @@ class GoogleDriveService:
             
             folder_id = folder.get('id')
             
-            self.service.permissions().create(
-                fileId=folder_id,
-                body={
-                    'type': 'anyone',
-                    'role': 'reader'
-                },
-                supportsAllDrives=True
-            ).execute()
+            # Note: Permissions are inherited from parent in Shared Drives
+            # No need to set individual permissions
             
             return folder_id
         except Exception as e:
@@ -69,14 +63,8 @@ class GoogleDriveService:
             
             file_id = file.get('id')
             
-            self.service.permissions().create(
-                fileId=file_id,
-                body={
-                    'type': 'anyone',
-                    'role': 'reader'
-                },
-                supportsAllDrives=True
-            ).execute()
+            # Note: Permissions are inherited from parent in Shared Drives
+            # No need to set individual permissions
             
             return file_id
         except Exception as e:
