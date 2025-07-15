@@ -89,3 +89,37 @@ class GoogleDriveService:
         except Exception as e:
             print(f"Error deleting file: {e}")
             return False
+    
+    def list_files(self, folder_id=None, page_size=100):
+        """List all files in a folder with their metadata
+        Returns list of files with id, name, size, createdTime, parents
+        """
+        try:
+            files = []
+            page_token = None
+            
+            # Use provided folder_id or fall back to instance parent_folder_id
+            target_folder = folder_id or self.parent_folder_id
+            
+            # Build query
+            query = f"'{target_folder}' in parents" if target_folder else None
+            
+            while True:
+                # Request files with metadata
+                response = self.service.files().list(
+                    q=query,
+                    pageSize=page_size,
+                    fields="nextPageToken, files(id, name, size, createdTime, mimeType, parents)",
+                    pageToken=page_token
+                ).execute()
+                
+                files.extend(response.get('files', []))
+                page_token = response.get('nextPageToken')
+                
+                if not page_token:
+                    break
+            
+            return files
+        except Exception as e:
+            print(f"Error listing files: {e}")
+            return []
