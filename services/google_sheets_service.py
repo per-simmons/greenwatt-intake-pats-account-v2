@@ -51,13 +51,14 @@ class GoogleSheetsService:
             'POA Link',
             'Agreement Link',
             'Terms & Conditions Link',
+            'CDG SMS Sent',
             'CDG Enrollment Status'
         ]
         
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:Y1'
+                range='A1:Z1'
             ).execute()
             
             existing_values = result.get('values', [])
@@ -71,7 +72,7 @@ class GoogleSheetsService:
                 
                 self.service.spreadsheets().values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range='A1:Y1',
+                    range='A1:Z1',
                     valueInputOption='RAW',
                     body=body
                 ).execute()
@@ -126,8 +127,8 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Y',
-                valueInputOption='RAW',
+                range='A:Z',
+                valueInputOption='USER_ENTERED',
                 insertDataOption='INSERT_ROWS',
                 body=body
             ).execute()
@@ -135,9 +136,9 @@ class GoogleSheetsService:
             # Format the newly added row
             if 'updates' in result and 'updatedRange' in result['updates']:
                 updated_range = result['updates']['updatedRange']
-                # Extract row number from range like "Sheet1!A2:Y2"
+                # Extract row number from range like "Sheet1!A2:Z2"
                 import re
-                row_match = re.search(r'!A(\d+):Y\d+', updated_range)
+                row_match = re.search(r'!A(\d+):Z\d+', updated_range)
                 if row_match:
                     row_number = int(row_match.group(1))
                     
@@ -257,7 +258,7 @@ class GoogleSheetsService:
         try:
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Y'
+                range='A:Z'
             ).execute()
             
             return result.get('values', [])
@@ -495,7 +496,7 @@ class GoogleSheetsService:
                             'startRowIndex': 0,
                             'endRowIndex': 1,
                             'startColumnIndex': 0,
-                            'endColumnIndex': 25  # Clear up to column Y
+                            'endColumnIndex': 26  # Clear up to column Z
                         },
                         'fields': 'userEnteredValue'
                     }
@@ -514,7 +515,7 @@ class GoogleSheetsService:
             
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range='A1:Y1',
+                range='A1:Z1',
                 valueInputOption='RAW',
                 body=body
             ).execute()
@@ -679,25 +680,27 @@ class GoogleSheetsService:
         self.cache.clear()
     
     def log_sms_sent(self, row_index):
-        """Update CDG Enrollment Status when SMS is sent"""
+        """Update CDG columns when SMS is sent"""
         try:
-            # Update column Y (CDG Enrollment Status) to PENDING when SMS is sent
+            # Update columns Y and Z for two-column approach
+            # Column Y: CDG SMS Sent = "YES"
+            # Column Z: CDG Enrollment Status = "PENDING"
             body = {
-                'values': [['PENDING']]
+                'values': [['YES', 'PENDING']]
             }
             
             result = self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'Y{row_index}',
+                range=f'Y{row_index}:Z{row_index}',
                 valueInputOption='RAW',
                 body=body
             ).execute()
             
-            print(f"✅ CDG Enrollment Status set to PENDING for row {row_index}")
+            print(f"✅ CDG SMS marked as sent and status set to PENDING for row {row_index}")
             return True
             
         except Exception as e:
-            print(f"❌ Error updating enrollment status: {e}")
+            print(f"❌ Error updating CDG columns: {e}")
             return False
     
     def log_sms_response(self, phone, response):
@@ -706,7 +709,7 @@ class GoogleSheetsService:
             # Get all data to find the row with matching phone number
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Y'
+                range='A:Z'
             ).execute()
             
             values = result.get('values', [])
@@ -729,14 +732,14 @@ class GoogleSheetsService:
                     else:
                         status = f'INVALID: {response}'
                     
-                    # Update column Y (CDG Enrollment Status)
+                    # Update column Z (CDG Enrollment Status)
                     body = {
                         'values': [[status]]
                     }
                     
                     result = self.service.spreadsheets().values().update(
                         spreadsheetId=self.spreadsheet_id,
-                        range=f'Y{row_number}',
+                        range=f'Z{row_number}',
                         valueInputOption='RAW',
                         body=body
                     ).execute()
