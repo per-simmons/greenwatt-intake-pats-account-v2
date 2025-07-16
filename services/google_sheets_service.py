@@ -679,6 +679,13 @@ class GoogleSheetsService:
         """Clear the lookup cache"""
         self.cache.clear()
     
+    def _normalize_phone(self, phone):
+        """Extract last 10 digits for US phone comparison"""
+        if not phone:
+            return ""
+        # Remove all non-digit characters and get last 10 digits
+        return ''.join(filter(str.isdigit, str(phone)))[-10:]
+    
     def log_sms_sent(self, row_index):
         """Update CDG columns when SMS is sent"""
         try:
@@ -706,6 +713,10 @@ class GoogleSheetsService:
     def log_sms_response(self, phone, response):
         """Find row by phone number and update CDG Enrollment Status"""
         try:
+            print(f"🔍 Searching for phone number: {phone}")
+            normalized_search_phone = self._normalize_phone(phone)
+            print(f"📱 Normalized search phone: {normalized_search_phone}")
+            
             # Get all data to find the row with matching phone number
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
@@ -713,6 +724,7 @@ class GoogleSheetsService:
             ).execute()
             
             values = result.get('values', [])
+            print(f"📊 Found {len(values)} rows in sheet")
             
             # Phone number is in column G (index 6)
             row_found = False
@@ -721,32 +733,44 @@ class GoogleSheetsService:
                     continue
                     
                 # Check if this row has the matching phone number in column G
-                if len(row) > 6 and row[6] == phone:
-                    row_number = idx + 1  # Convert to 1-based index
+                if len(row) > 6:
+                    sheet_phone = row[6]
+                    normalized_sheet_phone = self._normalize_phone(sheet_phone)
                     
-                    # Determine enrollment status based on response
-                    if response.upper() in ['Y', 'YES']:
-                        status = 'ENROLLED'
-                    elif response.upper() in ['N', 'NO']:
-                        status = 'DECLINED'
-                    else:
-                        status = f'INVALID: {response}'
+                    # Log comparison for debugging
+                    if idx <= 5:  # Log first few comparisons
+                        print(f"   Row {idx+1}: Sheet phone '{sheet_phone}' → '{normalized_sheet_phone}' vs '{normalized_search_phone}'")
                     
-                    # Update column Z (CDG Enrollment Status)
-                    body = {
-                        'values': [[status]]
-                    }
-                    
-                    result = self.service.spreadsheets().values().update(
-                        spreadsheetId=self.spreadsheet_id,
-                        range=f'Z{row_number}',
-                        valueInputOption='RAW',
-                        body=body
-                    ).execute()
-                    
-                    print(f"✅ CDG Enrollment Status updated for row {row_number}: {phone} → {status}")
-                    row_found = True
-                    break
+                    if normalized_sheet_phone == normalized_search_phone:
+                        row_number = idx + 1  # Convert to 1-based index
+                        print(f"✅ Found matching phone in row {row_number}!")
+                        
+                        # Determine enrollment status based on response
+                        if response.upper() in ['Y', 'YES']:
+                            status = 'ENROLLED'
+                        elif response.upper() in ['N', 'NO']:
+                            status = 'DECLINED'
+                        else:
+                            status = f'INVALID: {response}'
+                        
+                        print(f"📝 Updating CDG status to: {status}")
+                        
+                        # Update column Z (CDG Enrollment Status)
+                        body = {
+                            'values': [[status]]
+                        }
+                        
+                        result = self.service.spreadsheets().values().update(
+                            spreadsheetId=self.spreadsheet_id,
+                            range=f'Z{row_number}',
+                            valueInputOption='RAW',
+                            body=body
+                        ).execute()
+                        
+                        print(f"✅ CDG Enrollment Status updated for row {row_number}: {phone} → {status}")
+                        print(f"📊 Google Sheets API response: {result.get('updatedCells', 0)} cells updated")
+                        row_found = True
+                        break
             
             if not row_found:
                 print(f"⚠️  No matching row found for phone number: {phone}")

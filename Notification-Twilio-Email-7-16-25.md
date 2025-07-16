@@ -235,11 +235,79 @@ Once testing is complete, the following changes must be made to restore producti
   - Regex pattern already correct for Z column
   - Columns U-X show full Google Drive URLs (no hyperlink formulas)
 
+### Latest Fix (Hyperlink Issue):
+- **Problem**: HYPERLINK formulas were showing "View Bill", "View POA" etc. instead of actual URLs
+- **Solution**: Reverted back to inserting plain Google Drive URLs
+- **Also Fixed**: Changed valueInputOption back to 'RAW' to prevent data interpretation issues
+
 ### Testing Required:
 - Verify columns Y and Z appear in Google Sheets
 - Confirm SMS sent updates column Y to "YES" and column Z to "PENDING"
 - Confirm SMS response updates column Z to enrollment status
-- Verify full Google Drive URLs appear in columns U-X
+- Verify full Google Drive URLs appear in columns U-X (not hyperlink formulas)
+
+---
+
+## 🔧 Critical Webhook Fix (July 16, 2025) - **PENDING FINAL TEST/CONFIRMATION**
+
+### Issue Discovered:
+- CDG enrollment status stuck on "PENDING" after customer replies "Y"
+- Twilio logs showed "no HTTP requests logged for this event"
+- Direct curl testing returned 403 Forbidden error
+- Root cause: HTTPS/HTTP mismatch due to Render.com reverse proxy
+
+### Solution Implemented:
+
+#### 1. **X-Forwarded-Proto Fix**:
+When deployed on Render.com, the application runs behind a reverse proxy. Twilio signs webhooks with the public HTTPS URL, but Flask sees HTTP internally, causing signature validation to fail.
+
+**Fix applied in `/sms-webhook` route:**
+```python
+# Fix HTTPS/HTTP mismatch when behind Render's proxy
+proto = request.headers.get('X-Forwarded-Proto', 'http')
+if proto == 'https' and request_url.startswith('http://'):
+    request_url = request_url.replace('http://', 'https://', 1)
+```
+
+#### 2. **Phone Number Normalization** (Next Step):
+Need to normalize phone numbers for matching in Google Sheets:
+```python
+def _normalize_phone(self, phone):
+    """Extract last 10 digits for US phone comparison"""
+    return ''.join(filter(str.isdigit, str(phone)))[-10:]
+```
+
+#### 3. **Debug Mode Added**:
+New environment variable `TWILIO_WEBHOOK_DEBUG` allows bypassing signature validation for testing:
+- Set to "true" in Render.com for debugging
+- **IMPORTANT**: Must be removed or set to "false" in production
+
+### Enhanced Logging Added:
+- 🔔 Webhook hit logging (shows incoming requests)
+- 🔧 URL fix logging (shows HTTPS correction)
+- 📨 Parameter logging (shows From number and Body)
+
+### Testing Options:
+
+#### Option 1: Test Webhook Endpoint (Recommended)
+1. Deploy changes to Render.com
+2. Navigate to: `https://greenwatt.gtbsolarexchange.com/test-sms-webhook`
+3. Enter the phone number from the submitted form
+4. Select "Y" and submit
+5. Check logs and Google Sheets for updates
+
+#### Option 2: Real SMS Testing
+1. Deploy these changes to Render.com
+2. Set `TWILIO_WEBHOOK_DEBUG=true` temporarily in Render environment variables
+3. Send a test SMS reply
+4. Verify webhook receives and processes the response
+5. Check that CDG Enrollment Status updates from "PENDING" to "ENROLLED"
+6. **IMPORTANT**: Remove debug flag after confirming it works
+
+### Important Notes:
+- This is a common issue with applications deployed behind reverse proxies
+- The fix ensures Twilio's signature validation works correctly
+- Phone number normalization is still needed for proper row matching
 
 ---
 

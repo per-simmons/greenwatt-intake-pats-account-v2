@@ -2618,19 +2618,34 @@ def sms_webhook():
     This endpoint receives customer Y/N responses to verification messages.
     """
     try:
+        # Log webhook hit immediately
+        print(f"🔔 Webhook hit from {request.remote_addr}, URL={request.url}")
+        
         # Get Twilio signature for validation
         twilio_signature = request.headers.get('X-Twilio-Signature', '')
         request_url = request.url
         
+        # Fix HTTPS/HTTP mismatch when behind Render's proxy
+        proto = request.headers.get('X-Forwarded-Proto', 'http')
+        if proto == 'https' and request_url.startswith('http://'):
+            request_url = request_url.replace('http://', 'https://', 1)
+            print(f"🔧 Fixed URL for signature validation: {request_url}")
+        
         # Get POST parameters as dict
         post_params = request.form.to_dict()
+        print(f"📨 Webhook params: From={post_params.get('From')}, Body={post_params.get('Body')}")
         
-        # Validate the request is from Twilio (security)
-        is_valid = sms_service.validate_webhook_signature(
-            request_url, 
-            post_params, 
-            twilio_signature
-        )
+        # Check if debug mode is enabled
+        if os.getenv('TWILIO_WEBHOOK_DEBUG', 'false').lower() == 'true':
+            print("⚠️  TWILIO_WEBHOOK_DEBUG is enabled - bypassing signature validation")
+            is_valid = True
+        else:
+            # Validate the request is from Twilio (security)
+            is_valid = sms_service.validate_webhook_signature(
+                request_url, 
+                post_params, 
+                twilio_signature
+            )
         
         if not is_valid:
             print("❌ Invalid Twilio webhook signature - rejecting request")
@@ -2688,6 +2703,120 @@ def sms_webhook():
         import traceback
         traceback.print_exc()
         return "Internal Server Error", 500
+
+@app.route('/test-sms-webhook', methods=['GET', 'POST'])
+def test_sms_webhook():
+    """Test endpoint to simulate Twilio SMS webhook responses"""
+    if request.method == 'GET':
+        return '''
+        <html>
+        <head>
+            <title>Test SMS Webhook</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+                .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                h2 { color: #2c5530; }
+                .form-group { margin-bottom: 20px; }
+                label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+                input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
+                button { background: #2c5530; color: white; padding: 12px 30px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+                button:hover { background: #1e3d24; }
+                .info { background: #e8f5e8; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+                .response { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 4px; white-space: pre-wrap; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>🧪 Test SMS Webhook</h2>
+                <div class="info">
+                    This endpoint simulates a Twilio webhook response without needing to send an actual SMS.
+                    It bypasses signature validation for testing purposes.
+                </div>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="phone">Phone Number:</label>
+                        <input type="text" id="phone" name="phone" value="+12084848906" required>
+                        <small style="color: #666;">Enter the phone number that submitted the form</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="response">SMS Response:</label>
+                        <select id="response" name="response">
+                            <option value="Y">Y (Accept enrollment)</option>
+                            <option value="N">N (Decline enrollment)</option>
+                            <option value="YES">YES</option>
+                            <option value="NO">NO</option>
+                            <option value="INVALID">Invalid response</option>
+                        </select>
+                    </div>
+                    <button type="submit">🚀 Send Test Response</button>
+                </form>
+                <div id="result"></div>
+            </div>
+        </body>
+        </html>
+        '''
+    
+    # POST - simulate webhook processing
+    try:
+        phone = request.form.get('phone', '')
+        response = request.form.get('response', '')
+        
+        print("\n🧪 TEST WEBHOOK TRIGGERED")
+        print(f"Phone: {phone}")
+        print(f"Response: {response}")
+        
+        # Create mock webhook data
+        mock_webhook_data = {
+            'From': phone,
+            'Body': response,
+            'MessageSid': f'TEST_{datetime.now().strftime("%Y%m%d%H%M%S")}',
+            'AccountSid': 'TEST_ACCOUNT'
+        }
+        
+        # Process the response using the SMS service
+        response_data = sms_service.process_webhook_response(mock_webhook_data)
+        
+        # Log to Google Sheets
+        if response_data.get('status') != 'error':
+            success = sheets_service.log_sms_response(
+                phone=response_data['phone_number'],
+                response=response_data['parsed_response']
+            )
+            
+            result_html = f'''
+            <html>
+            <head><title>Test Results</title></head>
+            <body style="font-family: Arial; padding: 20px;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <h2>Test Results</h2>
+                    <div style="background: #f0f0f0; padding: 20px; border-radius: 8px;">
+                        <h3>Response Data:</h3>
+                        <pre>{json.dumps(response_data, indent=2)}</pre>
+                        
+                        <h3>Google Sheets Update:</h3>
+                        <p>Success: {success}</p>
+                        
+                        <h3>What to check:</h3>
+                        <ul>
+                            <li>Check Google Sheets column Z for the enrollment status update</li>
+                            <li>Look for the phone number match in column G</li>
+                            <li>Verify the status changed from PENDING to {response_data.get('parsed_response', 'UNKNOWN')}</li>
+                        </ul>
+                    </div>
+                    <a href="/test-sms-webhook" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #2c5530; color: white; text-decoration: none; border-radius: 4px;">Test Another</a>
+                </div>
+            </body>
+            </html>
+            '''
+            return result_html
+        else:
+            return f"Error: {response_data.get('error', 'Unknown error')}", 500
+            
+    except Exception as e:
+        print(f"❌ Test webhook error: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Error: {str(e)}", 500
 
 @app.route('/test-ocr', methods=['GET', 'POST'])
 def test_ocr():
