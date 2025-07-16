@@ -126,7 +126,7 @@ class GoogleSheetsService:
             
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Z',
+                range='A:Y',
                 valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
@@ -135,9 +135,9 @@ class GoogleSheetsService:
             # Format the newly added row
             if 'updates' in result and 'updatedRange' in result['updates']:
                 updated_range = result['updates']['updatedRange']
-                # Extract row number from range like "Sheet1!A2:Z2"
+                # Extract row number from range like "Sheet1!A2:Y2"
                 import re
-                row_match = re.search(r'!A(\d+):Z\d+', updated_range)
+                row_match = re.search(r'!A(\d+):Y\d+', updated_range)
                 if row_match:
                     row_number = int(row_match.group(1))
                     
@@ -495,7 +495,7 @@ class GoogleSheetsService:
                             'startRowIndex': 0,
                             'endRowIndex': 1,
                             'startColumnIndex': 0,
-                            'endColumnIndex': 26  # Clear up to column Z
+                            'endColumnIndex': 25  # Clear up to column Y
                         },
                         'fields': 'userEnteredValue'
                     }
@@ -681,14 +681,14 @@ class GoogleSheetsService:
     def log_sms_sent(self, row_index):
         """Update CDG Enrollment Status when SMS is sent"""
         try:
-            # Update column Z (CDG Enrollment Status) to PENDING when SMS is sent
+            # Update column Y (CDG Enrollment Status) to PENDING when SMS is sent
             body = {
                 'values': [['PENDING']]
             }
             
             result = self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
-                range=f'Z{row_index}',
+                range=f'Y{row_index}',
                 valueInputOption='RAW',
                 body=body
             ).execute()
@@ -706,7 +706,7 @@ class GoogleSheetsService:
             # Get all data to find the row with matching phone number
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
-                range='A:Z'
+                range='A:Y'
             ).execute()
             
             values = result.get('values', [])
@@ -729,14 +729,14 @@ class GoogleSheetsService:
                     else:
                         status = f'INVALID: {response}'
                     
-                    # Update column Z (CDG Enrollment Status)
+                    # Update column Y (CDG Enrollment Status)
                     body = {
                         'values': [[status]]
                     }
                     
                     result = self.service.spreadsheets().values().update(
                         spreadsheetId=self.spreadsheet_id,
-                        range=f'Z{row_number}',
+                        range=f'Y{row_number}',
                         valueInputOption='RAW',
                         body=body
                     ).execute()
