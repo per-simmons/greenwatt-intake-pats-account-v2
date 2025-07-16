@@ -128,7 +128,7 @@ class GoogleSheetsService:
             result = self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
                 range='A:Z',
-                valueInputOption='USER_ENTERED',
+                valueInputOption='RAW',
                 insertDataOption='INSERT_ROWS',
                 body=body
             ).execute()

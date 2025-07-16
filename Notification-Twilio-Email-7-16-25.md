@@ -150,7 +150,6 @@ Check Google Sheets for full details.
 - SMS customer verification: ✅ Implemented and tested
 - SMS internal notifications: ✅ Configuration updated (Pat's number added, client number removed)
 - CDG status tracking: ⏳ **PENDING FINAL TEST/CONFIRMATION** - Two-column approach implemented (Column Y: SMS Sent, Column Z: Enrollment Status)
-- Google Sheets hyperlinks: ⏳ **PENDING FINAL TEST/CONFIRMATION** - Columns U-X now use HYPERLINK formulas for clickable links
 
 ---
 
@@ -223,11 +222,6 @@ Once testing is complete, the following changes must be made to restore producti
 2. **Two-column CDG tracking approach**:
    - Column Y: "CDG SMS Sent" - Shows "YES" when SMS is sent
    - Column Z: "CDG Enrollment Status" - Shows "PENDING" → "ENROLLED"/"DECLINED"
-3. **Hyperlink formatting for document links**:
-   - Column U: Utility Bill Link - `=HYPERLINK(url, "View Bill")`
-   - Column V: POA Link - `=HYPERLINK(url, "View POA")`
-   - Column W: Agreement Link - `=HYPERLINK(url, "View Agreement")`  
-   - Column X: Terms & Conditions Link - `=HYPERLINK(url, "View T&C")`
 
 ### Code Changes Made:
 - Updated `google_sheets_service.py`:
@@ -235,17 +229,17 @@ Once testing is complete, the following changes must be made to restore producti
   - All ranges updated from A:Y to A:Z
   - `log_sms_sent()` now updates both columns Y and Z
   - `log_sms_response()` only updates column Z
-  - Changed valueInputOption from 'RAW' to 'USER_ENTERED' for formula support
+  - valueInputOption remains 'RAW' for proper data insertion
 - Updated `app.py`:
   - Sheet data array extended to include two CDG columns
   - Regex pattern already correct for Z column
-  - Hyperlink formulas added for columns U-X
+  - Columns U-X show full Google Drive URLs (no hyperlink formulas)
 
 ### Testing Required:
 - Verify columns Y and Z appear in Google Sheets
 - Confirm SMS sent updates column Y to "YES" and column Z to "PENDING"
 - Confirm SMS response updates column Z to enrollment status
-- Verify hyperlinks are clickable in columns U-X
+- Verify full Google Drive URLs appear in columns U-X
 
 ---
 

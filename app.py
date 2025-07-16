@@ -1734,10 +1734,10 @@ def process_submission_background(session_id, form_data, file_path):
             agent_name,                      # Agent Name (S) - shifted left
             # Column T removed (was Service Address OCR duplicate)
             poa_id_generated,                # POA ID (T) - shifted left
-            f'=HYPERLINK("{utility_bill_link}", "View Bill")' if utility_bill_link else '',  # Utility Bill Link (U) - as hyperlink formula
-            f'=HYPERLINK("{poa_link}", "View POA")' if poa_link else '',                    # POA Link (V) - as hyperlink formula
-            f'=HYPERLINK("{agreement_link}", "View Agreement")' if agreement_link else '',  # Agreement Link (W) - as hyperlink formula
-            f'=HYPERLINK("{agency_agreement_link}", "View T&C")' if agency_agreement_link else '',  # Terms & Conditions Link (X) - as hyperlink formula
+            utility_bill_link,              # Utility Bill Link (U) - shifted left
+            poa_link,                        # POA Link (V) - shifted left
+            agreement_link,                  # Agreement Link (W) - shifted left
+            agency_agreement_link,              # Terms & Conditions Link (X)
             '',                             # CDG SMS Sent (Y) - starts empty, updated when SMS is sent
             ''                              # CDG Enrollment Status (Z) - starts empty, updated when SMS response received
         ]
