@@ -309,6 +309,11 @@ New environment variable `TWILIO_WEBHOOK_DEBUG` allows bypassing signature valid
 - The fix ensures Twilio's signature validation works correctly
 - Phone number normalization is still needed for proper row matching
 
+### ⚠️ PRODUCTION CHECKLIST:
+1. **Remove or set `TWILIO_WEBHOOK_DEBUG=false`** in Render.com environment variables
+2. **Test webhook endpoint** (`/test-sms-webhook`) is safe to keep as it doesn't bypass security
+3. **Your existing enrollment**: No action needed - your "ENROLLED" status in Google Sheets won't cause issues
+
 ---
 
 *Last Updated: July 16, 2025*  

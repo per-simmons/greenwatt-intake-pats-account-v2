@@ -2800,7 +2800,7 @@ def test_sms_webhook():
                         <ul>
                             <li>Check Google Sheets column Z for the enrollment status update</li>
                             <li>Look for the phone number match in column G</li>
-                            <li>Verify the status changed from PENDING to {response_data.get('parsed_response', 'UNKNOWN')}</li>
+                            <li>Verify the status changed from PENDING to {'ENROLLED' if response_data.get('parsed_response') == 'Y' else 'DECLINED' if response_data.get('parsed_response') == 'N' else response_data.get('parsed_response', 'UNKNOWN')}</li>
                         </ul>
                     </div>
                     <a href="/test-sms-webhook" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #2c5530; color: white; text-decoration: none; border-radius: 4px;">Test Another</a>
