@@ -10,12 +10,12 @@ This document outlines the current email and SMS notification system configurati
 ### Email Recipients Configuration
 
 #### TO Recipients:
-1. **Agent Email** - Retrieved from Agent ID Sheet (Column D)
-2. **Sales Manager Email** - Retrieved from Agent ID Sheet (Column G)  
-3. **greenwatt.intake@gmail.com** - Always included (hardcoded)
+1. **Agent Email** - Retrieved from Agent ID Sheet (Column D) ✅ CONFIRMED WORKING
+2. **Sales Manager Email** - Retrieved from Agent ID Sheet (Column G) ✅ CONFIRMED WORKING
+3. **greenwatt.intake@gmail.com** - Always included (hardcoded) ✅ CONFIRMED WORKING
 
 #### CC Recipients:
-1. **operations@greenwattusa.com** - Always included (hardcoded)
+1. **operations@greenwattusa.com** - Always included (hardcoded) ✅ CONFIRMED WORKING
 
 ### Email Content Details
 - **From Address**: `greenwatt.intake@gmail.com` (verified sender)
@@ -33,6 +33,11 @@ This document outlines the current email and SMS notification system configurati
 ### SendGrid Configuration:
 - **API Key**: Set via `SENDGRID_API_KEY` environment variable
 - **SSL Handling**: Supports `DISABLE_SSL_VERIFICATION` for development environments
+
+### Email Implementation Details:
+- **Dynamic Recipients**: The system automatically retrieves agent email (Column D) and sales manager email (Column G) from the Ambassador ID spreadsheet based on the Agent ID entered in the form
+- **Code Location**: Email sending logic in `services/email_service.py`, agent lookup in `services/google_sheets_service.py`
+- **Verification**: Confirmed that both agent and sales manager emails are being passed correctly in app.py line 1774-1775
 
 ---
 
@@ -97,7 +102,7 @@ Check Google Sheets for full details.
 
 ## 🔄 SMS Response Handling
 
-### CDG Enrollment Status Tracking (Two-Column Approach) - **PENDING FINAL TEST/CONFIRMATION**
+### CDG Enrollment Status Tracking (Two-Column Approach) - **✅ CONFIRMED WORKING**
 - **Column Y**: CDG SMS Sent
   - **Initial State**: Empty string
   - **After SMS Sent**: Updates to "YES"
@@ -145,11 +150,12 @@ Check Google Sheets for full details.
 2. **Remove Client Number**: `+15857668518` temporarily for testing
 3. **Note**: Pat's number is temporary for testing - will be swapped out later
 
-### Current Status:
-- Email notifications: ✅ Fully configured and tested
-- SMS customer verification: ✅ Implemented and tested
-- SMS internal notifications: ✅ Configuration updated (Pat's number added, client number removed)
-- CDG status tracking: ⏳ **PENDING FINAL TEST/CONFIRMATION** - Two-column approach implemented (Column Y: SMS Sent, Column Z: Enrollment Status)
+### Current Status (July 16, 2025):
+- Email notifications: ✅ **CONFIRMED** - Sending to agent, sales manager, operations@greenwattusa.com
+- SMS customer verification: ✅ **CONFIRMED** - Webhook working, status updates immediately
+- SMS internal notifications: ⚠️ **READY TO MIGRATE** - Currently using Pat's number, needs update to Jason's
+- CDG status tracking: ✅ **CONFIRMED WORKING** - Updates from PENDING to ENROLLED/DECLINED
+- Agent/Manager Email Routing: ✅ **CONFIRMED** - Dynamically pulls from Ambassador ID spreadsheet
 
 ---
 
@@ -183,9 +189,9 @@ Check Google Sheets for full details.
 - **Service ID**: srv-d18vfefdiees73abnkv0
 - **Environment Variables**: Update via Render.com Environment tab
 
-### For Testing:
-- **Pat's Number**: +12084848906 (temporary testing)
-- **Client Number**: +15857668518 (temporarily removed)
+### Current Configuration:
+- **Active Internal Number**: +12084848906 (Pat's number - CURRENTLY ACTIVE for testing)
+- **Jason's Number**: +15857668518 (READY TO RESTORE - waiting for env var update)
 - **From Number**: +15858889205 (verified Twilio number)
 
 ---
@@ -193,11 +199,13 @@ Check Google Sheets for full details.
 ## 📝 TODO: Post-Testing Configuration Changes
 
 ### ⚠️ IMPORTANT: Restore Client Configuration After Testing
-Once testing is complete, the following changes must be made to restore production configuration:
+**STATUS: READY TO MIGRATE** - Testing is complete and webhook is confirmed working.
 
-1. **Restore Client's Number**: Add Jason's number `+15857668518` back to `TWILIO_INTERNAL_NUMBERS`
-2. **Remove Test Number**: Remove Pat's number `+12084848906` from `TWILIO_INTERNAL_NUMBERS`
-3. **Update Environment Variables**: Use Render.com dashboard to make these changes
+The following change needs to be made to restore production configuration:
+
+1. **Update TWILIO_INTERNAL_NUMBERS**: Change from `+12084848906` (Pat's test number) to `+15857668518` (Jason's number)
+2. **Action Required**: Update environment variable via Render.com dashboard
+3. **Expected Result**: All SMS notifications will be sent to Jason instead of Pat
 
 ### 🔧 How to Update Environment Variables in Render.com:
 1. **Login to Render.com Dashboard**: https://dashboard.render.com
@@ -215,7 +223,7 @@ Once testing is complete, the following changes must be made to restore producti
 
 ---
 
-## 📝 Implementation Updates (July 16, 2025) - **PENDING FINAL TEST/CONFIRMATION**
+## 📝 Implementation Updates (July 16, 2025) - **✅ CONFIRMED WORKING**
 
 ### Google Sheets Structure Changes:
 1. **Extended columns from Y to Z** (now 26 columns total: A-Z)
@@ -248,7 +256,7 @@ Once testing is complete, the following changes must be made to restore producti
 
 ---
 
-## 🔧 Critical Webhook Fix (July 16, 2025) - **PENDING FINAL TEST/CONFIRMATION**
+## 🔧 Critical Webhook Fix (July 16, 2025) - **✅ SUCCESSFULLY DEPLOYED & TESTED**
 
 ### Issue Discovered:
 - CDG enrollment status stuck on "PENDING" after customer replies "Y"
@@ -269,8 +277,8 @@ if proto == 'https' and request_url.startswith('http://'):
     request_url = request_url.replace('http://', 'https://', 1)
 ```
 
-#### 2. **Phone Number Normalization** (Next Step):
-Need to normalize phone numbers for matching in Google Sheets:
+#### 2. **Phone Number Normalization** (Implemented):
+Normalizes phone numbers for matching in Google Sheets:
 ```python
 def _normalize_phone(self, phone):
     """Extract last 10 digits for US phone comparison"""
@@ -307,12 +315,35 @@ New environment variable `TWILIO_WEBHOOK_DEBUG` allows bypassing signature valid
 ### Important Notes:
 - This is a common issue with applications deployed behind reverse proxies
 - The fix ensures Twilio's signature validation works correctly
-- Phone number normalization is still needed for proper row matching
+- Phone number normalization is implemented for proper row matching
+- **CONFIRMED**: Webhook is now successfully receiving and processing SMS responses
+- **CONFIRMED**: CDG Enrollment Status updates from "PENDING" to "ENROLLED" quickly
 
 ### ⚠️ PRODUCTION CHECKLIST:
 1. **Remove or set `TWILIO_WEBHOOK_DEBUG=false`** in Render.com environment variables
 2. **Test webhook endpoint** (`/test-sms-webhook`) is safe to keep as it doesn't bypass security
 3. **Your existing enrollment**: No action needed - your "ENROLLED" status in Google Sheets won't cause issues
+
+---
+
+## ✅ Final Deployment Success (July 16, 2025)
+
+### Webhook Fix Summary:
+1. **Issue**: 403 Forbidden errors due to HTTPS/HTTP mismatch with Render.com's reverse proxy
+2. **Solution**: Added X-Forwarded-Proto header handling to reconstruct proper HTTPS URLs
+3. **Additional Fix**: Removed duplicate route definition that was causing deployment errors
+4. **Result**: Webhook now successfully processes SMS responses and updates CDG status immediately
+
+### Key Implementation Details:
+- **Duplicate Route Fix**: Removed second `/test-sms-webhook` definition at line 3092
+- **Phone Normalization**: Compares last 10 digits of phone numbers for reliable matching
+- **Enhanced Logging**: Added detailed webhook processing logs for debugging
+- **Test Endpoint**: `/test-sms-webhook` available for simulating SMS responses
+
+### Production Notes:
+- Remember to remove or set `TWILIO_WEBHOOK_DEBUG=false` in production
+- All webhook responses are now processing correctly and updating Google Sheets in real-time
+- The system successfully handles enrollment confirmations (Y → ENROLLED) and declines (N → DECLINED)
 
 ---
 

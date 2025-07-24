@@ -320,12 +320,12 @@ class GoogleSheetsService:
                     
                     data_rows = rows[1:]
                     
-                    # Look for the agent by ID in column A
+                    # Look for the agent by ID in column B (index 1)
                     for row in data_rows:
-                        if len(row) >= 1 and row[0] == agent_id:
+                        if len(row) >= 2 and row[1] == agent_id:
                             # Found the agent, extract info from columns
                             agent_info = {
-                                "name": row[1] if len(row) > 1 else "Unknown",
+                                "name": row[0] if len(row) > 0 else "Unknown",  # Column A (index 0)
                                 "email": row[3] if len(row) > 3 else "",  # Column D (index 3)
                                 "sales_manager_email": row[6] if len(row) > 6 else ""  # Column G (index 6)
                             }
